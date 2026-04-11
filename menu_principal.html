@@ -1,0 +1,898 @@
+<!-- F1 Manager — Menú Principal -->
+<!-- Datos dinámicos marcados con ZMQ: campo_json -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>F1 Manager — Menú Principal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;1,300&family=Barlow:wght@300;400;500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary:   #0a0a0f;
+  --bg-panel:     #111118;
+  --bg-card:      #1a1a24;
+  --accent-red:   #e8001e;
+  --accent-amber: #f5a623;
+  --accent-green: #00d45e;
+  --accent-blue:  #0099ff;
+  --text-primary: #f0f0f5;
+  --text-muted:   #6b6b80;
+  --border:       #2a2a38;
+  --glow-red:     rgba(232,0,30,0.15);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Barlow', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── FONDO ANIMADO ─────────────────────────────────────── */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Líneas de circuito decorativas */
+.circuit-lines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(90deg, var(--text-primary) 1px, transparent 1px),
+    linear-gradient(0deg, var(--text-primary) 1px, transparent 1px);
+  background-size: 80px 80px;
+  animation: gridDrift 20s linear infinite;
+}
+@keyframes gridDrift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(80px); }
+}
+
+/* Brillo diagonal rojo */
+.bg-glow {
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 60%;
+  height: 120%;
+  background: radial-gradient(ellipse at 70% 40%, rgba(232,0,30,0.08) 0%, transparent 65%);
+  animation: glowPulse 6s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%     { opacity: 1;   transform: scale(1.05); }
+}
+
+/* Línea de velocidad — racing stripe */
+.speed-stripe {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-red) 30%, transparent 70%);
+  opacity: 0;
+  animation: stripeFlash 8s ease-in-out infinite;
+}
+@keyframes stripeFlash {
+  0%,100% { opacity:0; transform:scaleX(0) translateY(0); }
+  10%     { opacity:.6; transform:scaleX(1) translateY(0); }
+  20%     { opacity:0; }
+}
+
+/* ── LAYOUT PRINCIPAL ──────────────────────────────────── */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  grid-template-rows: 1fr;
+  height: 100vh;
+}
+
+/* ── PANEL IZQUIERDO ───────────────────────────────────── */
+.left-panel {
+  background: rgba(11,11,18,0.92);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  backdrop-filter: blur(4px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Línea roja vertical izquierda */
+.left-panel::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, transparent, var(--accent-red) 30%, var(--accent-red) 70%, transparent);
+}
+
+/* Logo / Identidad */
+.logo-area {
+  padding: 48px 44px 36px;
+  border-bottom: 1px solid var(--border);
+  animation: slideDown .7s cubic-bezier(.22,1,.36,1) both;
+}
+
+.game-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--accent-red);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.game-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  line-height: .9;
+  letter-spacing: 3px;
+  color: var(--text-primary);
+}
+
+.game-title span {
+  color: var(--accent-red);
+}
+
+.game-subtitle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* Estado de temporada */
+.season-card {
+  margin: 28px 44px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  animation: slideDown .7s cubic-bezier(.22,1,.36,1) .1s both;
+  position: relative;
+  overflow: hidden;
+}
+
+.season-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-red), transparent);
+}
+
+.season-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.season-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+.season-stat {
+  text-align: center;
+  padding: 0 12px;
+  border-right: 1px solid var(--border);
+}
+.season-stat:last-child { border-right: none; }
+
+.stat-number {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.stat-number.highlight { color: var(--accent-red); }
+
+.stat-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* Próxima carrera */
+.next-race {
+  margin: 20px 44px 0;
+  animation: slideDown .7s cubic-bezier(.22,1,.36,1) .15s both;
+}
+
+.next-race-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.next-race-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}<!-- ZMQ: next_race.name -->
+
+.next-race-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.next-race-days {
+  color: var(--accent-amber);
+  font-weight: 600;
+}
+
+/* ── NAVEGACIÓN ────────────────────────────────────────── */
+.nav-menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 44px;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .2s ease;
+  position: relative;
+  overflow: hidden;
+  animation: slideLeft .6s cubic-bezier(.22,1,.36,1) both;
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-item:nth-child(1) { animation-delay: .2s; }
+.nav-item:nth-child(2) { animation-delay: .26s; }
+.nav-item:nth-child(3) { animation-delay: .32s; }
+.nav-item:nth-child(4) { animation-delay: .38s; }
+.nav-item:nth-child(5) { animation-delay: .44s; }
+.nav-item:nth-child(6) { animation-delay: .50s; }
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  top: 0; bottom: 0;
+  width: 100%;
+  background: var(--glow-red);
+  transition: left .3s ease;
+}
+
+.nav-item:hover::before,
+.nav-item.active::before { left: 0; }
+
+.nav-item:hover,
+.nav-item.active {
+  border-color: rgba(232,0,30,.3);
+  border-left-color: var(--accent-red);
+}
+
+.nav-item.active .nav-label { color: var(--text-primary); }
+
+.nav-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--border);
+  min-width: 20px;
+  transition: color .2s;
+}
+.nav-item:hover .nav-number,
+.nav-item.active .nav-number { color: var(--accent-red); }
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Iconos SVG inline simples */
+.nav-icon svg { width:18px; height:18px; stroke: var(--text-muted); fill:none; stroke-width:1.5; transition: stroke .2s; }
+.nav-item:hover .nav-icon svg,
+.nav-item.active .nav-icon svg { stroke: var(--accent-red); }
+
+.nav-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  transition: color .2s;
+  flex: 1;
+}
+.nav-item:hover .nav-label { color: var(--text-primary); }
+
+.nav-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 2px;
+  background: var(--accent-red);
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.nav-badge.amber { background: var(--accent-amber); color: #000; }
+
+/* ── BOTTOM BAR ────────────────────────────────────────── */
+.left-bottom {
+  padding: 20px 44px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideDown .6s ease .5s both;
+}
+
+.version-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--border);
+  letter-spacing: 1px;
+}
+
+.save-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── PANEL DERECHO — CONTENIDO CONTEXTUAL ──────────────── */
+.right-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Pantalla de bienvenida (default) */
+.welcome-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  animation: fadeIn .8s ease .3s both;
+}
+
+.welcome-team {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: var(--accent-red);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}<!-- ZMQ: team.name -->
+
+/* Datos grandes del equipo */
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+  width: 100%;
+  max-width: 560px;
+  margin: 40px 0;
+}
+
+.hero-stat-card {
+  background: var(--bg-card);
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+  transition: background .2s;
+}
+.hero-stat-card:hover { background: #1e1e2e; }
+
+.hero-stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.hero-stat-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.hero-stat-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.hero-stat-value.red   { color: var(--accent-red); }
+.hero-stat-value.green { color: var(--accent-green); }
+.hero-stat-value.amber { color: var(--accent-amber); }
+
+.hero-stat-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Notificaciones */
+.notifications {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notif {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border-left: 2px solid var(--border);
+  cursor: pointer;
+  transition: all .2s;
+  animation: slideRight .5s ease both;
+}
+.notif:nth-child(1) { animation-delay:.4s; border-left-color: var(--accent-amber); }
+.notif:nth-child(2) { animation-delay:.48s; border-left-color: var(--accent-blue); }
+.notif:nth-child(3) { animation-delay:.56s; border-left-color: var(--accent-green); }
+.notif:hover { background: #1e1e2e; }
+
+.notif-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.notif:nth-child(1) .notif-dot { background: var(--accent-amber); }
+.notif:nth-child(2) .notif-dot { background: var(--accent-blue); }
+.notif:nth-child(3) .notif-dot { background: var(--accent-green); }
+
+.notif-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.notif-text strong { color: var(--text-primary); font-weight: 500; }
+
+.notif-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--border);
+  white-space: nowrap;
+}
+
+/* Subpantallas */
+.sub-screen {
+  display: none;
+  flex: 1;
+  padding: 60px;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn .3s ease;
+}
+.sub-screen.visible { display: flex; }
+
+.sub-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.option-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 24px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.option-card:hover {
+  border-color: var(--accent-red);
+  background: var(--glow-red);
+}
+.option-card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.option-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── ANIMATIONS ────────────────────────────────────────── */
+@keyframes slideDown  { from{transform:translateY(-24px);opacity:0} to{transform:none;opacity:1} }
+@keyframes slideLeft  { from{transform:translateX(-24px);opacity:0} to{transform:none;opacity:1} }
+@keyframes slideRight { from{transform:translateX(24px);opacity:0}  to{transform:none;opacity:1} }
+@keyframes fadeIn     { from{opacity:0} to{opacity:1} }
+
+::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<div class="bg-layer">
+  <div class="circuit-lines"></div>
+  <div class="bg-glow"></div>
+  <div class="speed-stripe"></div>
+</div>
+
+<div class="layout">
+
+  <!-- ── PANEL IZQUIERDO ─────────────────────────────── -->
+  <div class="left-panel">
+
+    <div class="logo-area">
+      <div class="game-label">Temporada 2026</div><!-- ZMQ: season.year -->
+      <div class="game-title">APEX<br><span>RACING</span></div><!-- ZMQ: team.name -->
+      <div class="game-subtitle">Formula One Management Simulation</div>
+    </div>
+
+    <!-- Estado de temporada -->
+    <div class="season-card">
+      <div class="season-tag">Estado de Temporada</div><!-- ZMQ: season.label -->
+      <div class="season-stats">
+        <div class="season-stat">
+          <div class="stat-number highlight">3º</div><!-- ZMQ: championship.position -->
+          <div class="stat-desc">Constructores</div>
+        </div>
+        <div class="season-stat">
+          <div class="stat-number">187</div><!-- ZMQ: championship.points -->
+          <div class="stat-desc">Puntos</div>
+        </div>
+        <div class="season-stat">
+          <div class="stat-number">8/24</div><!-- ZMQ: season.race_current / season.race_total -->
+          <div class="stat-desc">Carreras</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Próxima carrera -->
+    <div class="next-race">
+      <div class="next-race-label">Próxima Carrera</div>
+      <div class="next-race-name">Grand Prix de Montréal</div><!-- ZMQ: next_race.name -->
+      <div class="next-race-meta">
+        <span>Circuit Gilles Villeneuve</span><!-- ZMQ: next_race.circuit -->
+        <span>·</span>
+        <span class="next-race-days">12 días</span><!-- ZMQ: next_race.days_until -->
+      </div>
+    </div>
+
+    <!-- Navegación -->
+    <nav class="nav-menu">
+
+      <div class="nav-item active" onclick="showScreen('home')">
+        <span class="nav-number">01</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        </span>
+        <span class="nav-label">Cuartel General</span>
+      </div>
+
+      <div class="nav-item" onclick="showScreen('calendar')">
+        <span class="nav-number">02</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+        <span class="nav-label">Calendario</span>
+        <span class="nav-badge amber">GP·9</span><!-- ZMQ: next_race.round -->
+      </div>
+
+      <div class="nav-item" onclick="showScreen('garage')">
+        <span class="nav-number">03</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M12 2v2M12 20v2M2 12H4M20 12h2M6.34 5.34L4.93 4.93M19.07 19.07l-1.41-1.41"/></svg>
+        </span>
+        <span class="nav-label">Garage</span>
+      </div>
+
+      <div class="nav-item" onclick="showScreen('staff')">
+        <span class="nav-number">04</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </span>
+        <span class="nav-label">Plantilla</span>
+        <span class="nav-badge">2 OFERTAS</span><!-- ZMQ: staff.pending_offers -->
+      </div>
+
+      <div class="nav-item" onclick="showScreen('finances')">
+        <span class="nav-number">05</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </span>
+        <span class="nav-label">Finanzas</span>
+      </div>
+
+      <div class="nav-item" onclick="showScreen('settings')">
+        <span class="nav-number">06</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </span>
+        <span class="nav-label">Ajustes</span>
+      </div>
+
+    </nav>
+
+    <div class="left-bottom">
+      <span class="version-tag">v0.1.0-dev</span>
+      <div class="save-info">
+        Guardado automático<br>hace 3 min<!-- ZMQ: save.last_saved -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── PANEL DERECHO ────────────────────────────────── -->
+  <div class="right-panel">
+
+    <!-- Pantalla HOME (default) -->
+    <div class="welcome-screen" id="screen-home">
+      <div class="welcome-team">Apex Racing — Temporada 2026</div><!-- ZMQ: team.name / season.year -->
+
+      <div class="hero-stats">
+        <div class="hero-stat-card">
+          <div class="hero-stat-label">Posición Campeonato</div>
+          <div class="hero-stat-value red">3º</div><!-- ZMQ: championship.position -->
+          <div class="hero-stat-sub">–42 pts del líder</div><!-- ZMQ: championship.gap_to_leader -->
+        </div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-label">Presupuesto Disponible</div>
+          <div class="hero-stat-value green">47M</div><!-- ZMQ: budget.available / 1e6 -->
+          <div class="hero-stat-sub">de 150M cap · 67% gastado</div><!-- ZMQ: budget.cap / budget.spent_pct -->
+        </div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-label">Piloto Estrella</div>
+          <div class="hero-stat-value amber" style="font-size:42px;">P3</div><!-- ZMQ: drivers[0].championship_pos -->
+          <div class="hero-stat-sub">K. Hartmann · 124 pts</div><!-- ZMQ: drivers[0].name / points -->
+        </div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-label">Fiabilidad Media</div>
+          <div class="hero-stat-value green">96%</div><!-- ZMQ: car.avg_reliability -->
+          <div class="hero-stat-sub">Motor · Chasis · Aero</div>
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div class="notifications">
+        <!-- ZMQ: notifications[] -->
+        <div class="notif">
+          <div class="notif-dot"></div>
+          <div class="notif-text">
+            <strong>Contrato de R. Vasquez</strong> expira al final de temporada.
+            Negociación pendiente de respuesta.
+          </div>
+          <span class="notif-time">HOY</span>
+        </div>
+        <div class="notif">
+          <div class="notif-dot"></div>
+          <div class="notif-text">
+            <strong>Actualización de motor</strong> disponible. Coste estimado: 8.2M.
+            Requiere aprobación de homologación.
+          </div>
+          <span class="notif-time">2D</span>
+        </div>
+        <div class="notif">
+          <div class="notif-dot"></div>
+          <div class="notif-text">
+            <strong>Simulación de Montréal</strong> completada.
+            Ritmo proyectado: P3-P4 en clasificación.
+          </div>
+          <span class="notif-time">3D</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpantalla CALENDARIO -->
+    <div class="sub-screen" id="screen-calendar">
+      <div class="sub-title">Calendario 2026</div>
+      <div class="option-grid">
+        <div class="option-card">
+          <div class="option-card-title">Preparación GP Montréal</div>
+          <div class="option-card-desc">Gestiona la configuración del coche, estrategia de neumáticos y simulaciones previas al Grand Prix.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Resultados anteriores</div>
+          <div class="option-card-desc">Revisa los datos de las 8 carreras anteriores de la temporada.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Calendario completo</div>
+          <div class="option-card-desc">Vista de las 24 rondas de la temporada con circuitos, fechas y pronósticos.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Campeonatos</div>
+          <div class="option-card-desc">Clasificaciones de pilotos y constructores con proyección de puntos.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpantalla GARAGE -->
+    <div class="sub-screen" id="screen-garage">
+      <div class="sub-title">Garage</div>
+      <div class="option-grid">
+        <div class="option-card">
+          <div class="option-card-title">Configuración del Coche</div>
+          <div class="option-card-desc">Ajuste de aerodinámica, suspensión, frenos y mapa de motor para el circuito actual.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Desarrollo</div>
+          <div class="option-card-desc">Investiga y desarrolla nuevos componentes. Gestiona tokens y homologaciones.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Fiabilidad</div>
+          <div class="option-card-desc">Estado de cada componente, historial de fallos y plan de mantenimiento preventivo.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Inventario</div>
+          <div class="option-card-desc">Componentes disponibles en stock, repuestos y órdenes en producción.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpantalla PLANTILLA -->
+    <div class="sub-screen" id="screen-staff">
+      <div class="sub-title">Plantilla</div>
+      <div class="option-grid">
+        <div class="option-card">
+          <div class="option-card-title">Pilotos</div>
+          <div class="option-card-desc">Contratos, rendimiento, moral y mercado de fichajes para la próxima temporada.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Ingenieros</div>
+          <div class="option-card-desc">Jefe de ingenieros, estrategas, diseñadores. Contratación y desarrollo de habilidades.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Academia</div>
+          <div class="option-card-desc">Gestiona pilotos junior, programas de desarrollo y promociones al equipo principal.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Staff técnico</div>
+          <div class="option-card-desc">Mecánicos, médicos de equipo, personal de logística. Eficiencia en pit stops.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpantalla FINANZAS -->
+    <div class="sub-screen" id="screen-finances">
+      <div class="sub-title">Finanzas</div>
+      <div class="option-grid">
+        <div class="option-card">
+          <div class="option-card-title">Presupuesto</div>
+          <div class="option-card-desc">Visión completa de ingresos, gastos y proyección del budget cap restante.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Sponsors</div>
+          <div class="option-card-desc">Contratos activos, renovaciones y búsqueda de nuevos patrocinadores.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Premios FOM</div>
+          <div class="option-card-desc">Reparto de fondos por posición en campeonato y bonificaciones por resultados.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Infraestructura</div>
+          <div class="option-card-desc">Inversión en fábrica, túnel de viento, simulador y centros de operación.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpantalla AJUSTES -->
+    <div class="sub-screen" id="screen-settings">
+      <div class="sub-title">Ajustes</div>
+      <div class="option-grid">
+        <div class="option-card">
+          <div class="option-card-title">Dificultad de IA</div>
+          <div class="option-card-desc">Nivel de agresividad de los equipos rivales en pista y fuera de ella.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Simulación</div>
+          <div class="option-card-desc">Velocidad de simulación de carrera, variabilidad de clima y eventos aleatorios.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Guardado</div>
+          <div class="option-card-desc">Gestión de partidas guardadas, autoguardado y exportación de datos.</div>
+        </div>
+        <div class="option-card">
+          <div class="option-card-title">Gráficos y Audio</div>
+          <div class="option-card-desc">Resolución, calidad de render en Godot y configuración de sonido.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /right-panel -->
+</div><!-- /layout -->
+
+<script>
+function showScreen(id) {
+  // Ocultar todas las pantallas
+  document.querySelectorAll('.welcome-screen, .sub-screen').forEach(el => {
+    el.classList.remove('visible');
+    el.style.display = 'none';
+  });
+
+  // Activar nav item
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  // Mostrar pantalla correspondiente
+  if (id === 'home') {
+    const ws = document.getElementById('screen-home');
+    ws.style.display = 'flex';
+  } else {
+    const sc = document.getElementById('screen-' + id);
+    if (sc) {
+      sc.classList.add('visible');
+      sc.style.display = 'flex';
+    }
+  }
+}
+
+// Init — mostrar home
+document.getElementById('screen-home').style.display = 'flex';
+</script>
+</body>
+</html>
