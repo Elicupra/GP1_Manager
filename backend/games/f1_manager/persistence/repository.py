@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.db.models import (
     Base,
-    Car,
     CarComponent,
     Championship,
     Circuit,
@@ -77,6 +76,11 @@ class F1Repository:
         """Retorna el equipo del jugador."""
         with self._Session() as s:
             return s.scalars(select(Team).where(Team.is_player == True)).first()
+
+    def get_team(self, team_id: int) -> Optional[Team]:
+        """Retorna un equipo por ID."""
+        with self._Session() as s:
+            return s.get(Team, team_id)
 
     def update_team_morale(self, team_id: int, delta: float) -> None:
         """Ajusta la moral del equipo en ±delta."""
@@ -159,6 +163,25 @@ class F1Repository:
         with self._Session() as s:
             return s.get(Race, race_id)
 
+    def count_completed_races(self, season_id: int) -> int:
+        """Cuenta las carreras ya completadas de la temporada."""
+        with self._Session() as s:
+            return len(
+                list(
+                    s.scalars(
+                        select(Race).where(
+                            Race.season_id == season_id,
+                            Race.is_completed == True,
+                        )
+                    ).all()
+                )
+            )
+
+    def count_total_races(self, season_id: int) -> int:
+        """Cuenta todas las carreras de la temporada."""
+        with self._Session() as s:
+            return len(list(s.scalars(select(Race).where(Race.season_id == season_id)).all()))
+
     def get_races_by_season(self, season_id: int) -> list[Race]:
         with self._Session() as s:
             return list(s.scalars(
@@ -187,10 +210,12 @@ class F1Repository:
                 return
             race.is_completed = True
 
-            for r in results:
+            for index, r in enumerate(results, start=1):
+                grid_position = int(r.get("grid_position") or r.get("finish_position") or index)
                 dr = DriverResult(
                     race_id         = race_id,
                     driver_id       = r["driver_id"],
+                    grid_position   = grid_position,
                     finish_position = r["finish_position"],
                     points          = r["points"],
                     dnf             = r["dnf"],
@@ -223,6 +248,27 @@ class F1Repository:
         for pos, c in enumerate(champs, start=1):
             c.position = pos
 
+    def get_championship(self, team_id: int, season_id: int) -> Optional[Championship]:
+        """Retorna la fila de campeonato de un equipo."""
+        with self._Session() as s:
+            return s.scalars(
+                select(Championship).where(
+                    Championship.team_id == team_id,
+                    Championship.season_id == season_id,
+                )
+            ).first()
+
+    def get_all_championships(self, season_id: int) -> list[Championship]:
+        """Retorna la clasificación completa de constructores."""
+        with self._Session() as s:
+            return list(
+                s.scalars(
+                    select(Championship)
+                    .where(Championship.season_id == season_id)
+                    .order_by(Championship.position)
+                ).all()
+            )
+
     # ── Finance ───────────────────────────────────────────────────────────────
 
     def get_finance(self, team_id: int, season_id: int) -> Optional[TeamFinance]:
@@ -233,6 +279,11 @@ class F1Repository:
                     TeamFinance.season_id == season_id,
                 )
             ).first()
+
+    def get_sponsors(self, team_id: int) -> list[Sponsor]:
+        """Retorna los sponsors del equipo."""
+        with self._Session() as s:
+            return list(s.scalars(select(Sponsor).where(Sponsor.team_id == team_id)).all())
 
     def add_expense(self, team_id: int, season_id: int, amount_m: float, category: str) -> None:
         """Registra un gasto en el presupuesto."""

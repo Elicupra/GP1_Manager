@@ -1,35 +1,66 @@
 # TODO - GP1 Manager
 
-## Prioridad alta (bloqueantes y consistencia)
+## Prioridad alta (migracion v2)
+
+- [x] Reemplazar AGENTS.md con especificacion v2 (PyWebView + Arcade).
+- [x] Crear `main.py` en raiz como entrypoint unico.
+- [x] Crear estructura base:
+  - `backend/core/*`
+  - `backend/games/f1_manager/api/*`
+  - `ui/*`
+  - `arcade_view/*`
+  - `alembic/*`
+- [ ] Completar pantallas de gestion faltantes en `ui/screens/`:
+  - `dashboard.html`
+  - `garage.html`
+  - `market.html`
+  - `finances.html`
+  - `strategy.html`
+- [ ] Integrar ventana Arcade real con sprites y render continuo.
+- [ ] Conectar `start_race` para flujo gestion -> carrera -> gestion.
+- [ ] Corregir crash al iniciar GP por hilo Arcade/Pyglet.
+  - Error observado: `RuntimeError: EventLoop.run() must be called from the same thread that imports pyglet.app`
+- [ ] Corregir guardado de `driver_results` cuando falta `grid_position`.
+  - Error observado: `sqlite3.IntegrityError: NOT NULL constraint failed: driver_results.grid_position`
+
+## Prioridad media (backend)
 
 - [ ] Corregir carga de carrera y circuito para evitar DetachedInstanceError.
   - Archivo: [backend/games/f1_manager/persistence/repository.py](backend/games/f1_manager/persistence/repository.py)
-  - Archivo: [backend/main.py](backend/main.py)
 - [ ] Corregir estado `in_pit` para que no quede permanente tras una parada.
   - Archivo: [backend/games/f1_manager/simulation/race_simulator.py](backend/games/f1_manager/simulation/race_simulator.py)
 - [ ] Evitar asignar puntos a coches DNF en resultados finales.
   - Archivo: [backend/games/f1_manager/simulation/race_simulator.py](backend/games/f1_manager/simulation/race_simulator.py)
 
-## Prioridad media (calidad de proyecto)
-
-- [ ] Limpiar artefactos de carpetas/archivos con llaves en nombres dentro de backend/tests.
-- [ ] Limpiar archivos temporales `*.tmp` en la raiz del proyecto.
-- [ ] Mover/organizar archivos no pertenecientes al backend dentro de `backend/db/` (por ejemplo `main_menu.tscn`, `formula_car.zip`) si aplica.
-
 ## Entorno y tooling
 
-- [ ] Instalar y configurar Godot 4 en PATH para ejecucion por terminal.
 - [ ] Instalar dependencias Python dev (`pip install -e ".[dev]"`).
-- [ ] Ejecutar tests con pytest y guardar resultado base.
+- [ ] Ejecutar migraciones con Alembic (`alembic upgrade head`).
+- [ ] Ejecutar tests con pytest y guardar baseline.
 
 ## Backend y pruebas
 
 - [ ] Agregar tests para los 3 bugs detectados del simulador/repositorio.
-- [ ] Agregar tests de integracion minimos para `handle_command` en [backend/main.py](backend/main.py).
-- [ ] Añadir validacion de schema de mensajes ZeroMQ (request/response).
+- [ ] Agregar tests de integracion para [backend/games/f1_manager/api/js_api.py](backend/games/f1_manager/api/js_api.py).
+- [ ] Validar contrato de datos UI para PyWebView.
 
-## UI Godot
+## TODO - Consideraciones nuevas de carrera
 
-- [ ] Aplicar Theme y fuentes para acercar [main_menu.tscn](main_menu.tscn) al prototipo [menu_principal.html](menu_principal.html).
-- [ ] Completar subpantallas (Calendario, Garage, Plantilla, Finanzas, Ajustes) en Godot.
-- [ ] Integrar `ZmqBus` real y reemplazar modo mock cuando backend este operativo.
+- [ ] Modelo de vuelta por recorrido real del circuito 2D.
+  - Implementar progreso de vuelta basado en distancia acumulada sobre el trazado 2D (spline o path de la imagen del circuito).
+  - Definir que una vuelta se completa al cerrar el recorrido completo del trazado, no por tick.
+  - Separar tick de simulacion y avance espacial para evitar equivalencia 1 tick = 1 vuelta.
+  - Añadir pruebas para validar conversion distancia -> progreso -> vuelta completada.
+
+- [ ] Modo boxes interactivo para estrategia y gestion en carrera.
+  - Crear panel de boxes con estado de coche y piloto (neumaticos, combustible, desgaste, danos, ritmo).
+  - Mostrar telemetria minima de carrera: gaps, tiempos por vuelta, mejor vuelta, posicion en pista y delta con rivales.
+  - Permitir decisiones del jugador en tiempo real (parada, compuesto, ajustes de ritmo/energia, ordenes de equipo).
+  - Modelar decisiones de CPU en paralelo y su impacto en posiciones, undercut/overcut, trafico y resultado final.
+  - Persistir eventos de estrategia (pit in/out, stint, ordenes) para analisis posterior.
+
+- [ ] Flujo de fin de carrera estable + persistencia de resultados.
+  - Corregir cierre inesperado al finalizar carrera para volver siempre a pantalla de gestion.
+  - Asegurar guardado atomico de resultados finales antes del retorno a UI de gestion.
+  - Mostrar resumen post-carrera (clasificacion, puntos, vuelta rapida, incidentes, estrategia) y confirmar guardado.
+  - Añadir test de integracion para validar ciclo completo: iniciar GP -> finalizar -> volver a gestion sin cerrar app.
