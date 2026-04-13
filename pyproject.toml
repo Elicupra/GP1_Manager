@@ -1,18 +1,23 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "f1-manager-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "pywebview>=5.0",
+    "arcade>=2.6",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
-    "pyzmq>=25",
     "python-dotenv>=1.0",
     "numpy>=1.26",          # simulación numérica
 ]
+
+[project.scripts]
+f1-manager = "main:main"
+db-inspector = "tools.db_inspector:main"
 
 [project.optional-dependencies]
 dev = [

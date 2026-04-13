@@ -4,3 +4,14 @@
 /main_menu.gd69830909.tmp
 /main_menu.tscn67828677.tmp
 /main_menu_scene_notes.gd72132564.tmp
+
+# Python local environments and caches
+.venv/
+.venv312/
+__pycache__/
+*.pyc
+.coverage
+
+# Local runtime artifacts
+data/*.db
+files.zip

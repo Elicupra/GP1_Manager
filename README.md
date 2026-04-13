@@ -1,68 +1,38 @@
 # GP1 Manager
 
-Proyecto de simulacion tipo F1 Manager con arquitectura separada:
-- Backend Python para logica de simulacion y persistencia.
-- Frontend Godot para UI/escenas.
-- Prototipos HTML para validar pantallas antes de pasarlas a Godot.
-
-## Estado actual del proyecto
-
-### Lo que ya existe
-- Proyecto Godot minimo arrancable con escena principal: [project.godot](project.godot).
-- Menu principal inicial en Godot:
-  - Script: [main_menu.gd](main_menu.gd)
-  - Escena: [main_menu.tscn](main_menu.tscn)
-- Prototipos UI HTML:
-  - [menu_principal.html](menu_principal.html)
-  - [hud_carrera.html](hud_carrera.html)
-- Backend Python base:
-  - Entry point: [backend/main.py](backend/main.py)
-  - Simulador: [backend/games/f1_manager/simulation/race_simulator.py](backend/games/f1_manager/simulation/race_simulator.py)
-  - Repositorio DB: [backend/games/f1_manager/persistence/repository.py](backend/games/f1_manager/persistence/repository.py)
-  - Modelos SQLAlchemy: [backend/db/models.py](backend/db/models.py)
-- Seeder de base de datos: [tools/seed_db.py](tools/seed_db.py)
-- Tests iniciales del simulador: [tests/f1_manager/test_race_simulator.py](tests/f1_manager/test_race_simulator.py)
-
-### Estado de ejecucion local conocido
-- Godot no esta detectado en PATH en esta maquina (comando godot4 falla).
-- pytest no esta instalado en el entorno actual (comando pytest falla).
+Proyecto de simulacion tipo F1 Manager sobre stack Python puro:
+- Backend Python para dominio, simulacion y persistencia.
+- Gestion/UI con PyWebView + HTML/CSS/JS.
+- Visualizacion de carrera 2D con Arcade.
 
 ## Stack tecnico
 
 - Python 3.12+
+- PyWebView 5+
+- Arcade 2.6+
 - SQLAlchemy 2.x
 - Alembic
-- pyzmq
 - numpy
 - python-dotenv
-- Godot 4.x (GDScript)
 
-Dependencias Python declaradas en [pyproject.toml](pyproject.toml).
+Dependencias declaradas en [pyproject.toml](pyproject.toml).
 
 ## Estructura relevante
 
-- backend/
-  - main.py
-  - db/
-    - models.py
-  - games/f1_manager/
-    - domain/entities.py
-    - simulation/race_simulator.py
-    - persistence/repository.py
-- tests/
-  - f1_manager/test_race_simulator.py
-- tools/
-  - seed_db.py
-- main_menu.gd
-- main_menu.tscn
-- menu_principal.html
-- hud_carrera.html
+- [main.py](main.py): punto de entrada unico de la app.
+- [backend/core](backend/core): primitivas genericas reutilizables.
+- [backend/games/f1_manager](backend/games/f1_manager): implementacion especifica de F1 Manager.
+- [backend/games/f1_manager/api/js_api.py](backend/games/f1_manager/api/js_api.py): puente JS↔Python.
+- [ui/screens/main_menu.html](ui/screens/main_menu.html): pantalla principal de gestion.
+- [ui/screens/hud_carrera.html](ui/screens/hud_carrera.html): HUD de carrera prototipo.
+- [arcade_view/race_window.py](arcade_view/race_window.py): adaptador de snapshots de carrera.
+- [backend/db/models.py](backend/db/models.py): modelos SQLAlchemy.
+- [tools/seed_db.py](tools/seed_db.py): seeder inicial.
+- [tools/db_inspector.py](tools/db_inspector.py): inspeccion simple de SQLite.
 
-## Como levantar el proyecto (estado actual)
+## Como levantar el proyecto
 
-### 1) Crear entorno Python e instalar dependencias
-
-Windows PowerShell:
+1. Crear entorno e instalar dependencias.
 
 ```powershell
 python -m venv .venv
@@ -70,44 +40,30 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-### 2) Crear y poblar base de datos
+2. Crear y poblar base de datos.
 
 ```powershell
 python tools/seed_db.py
 ```
 
-### 3) Ejecutar backend
+3. Ejecutar migraciones (opcional en esta fase, recomendado para evolucion de esquema).
 
 ```powershell
-python backend/main.py
+alembic upgrade head
 ```
 
-Puertos por defecto:
-- PUB: 5556
-- REP: 5557
-
-Se pueden cambiar con variables de entorno `PUB_PORT`, `REP_PORT`, `DB_URL`.
-
-### 4) Ejecutar Godot
-
-Opciones:
-- Abrir Godot 4 y cargar esta carpeta.
-- O por consola (si Godot esta en PATH):
+4. Arrancar aplicacion.
 
 ```powershell
-godot4 --path D:\GitHub\GP1_Manager
+python main.py
 ```
 
-## Riesgos tecnicos abiertos detectados
+5. Ejecutar pruebas.
 
-1. Posible DetachedInstanceError al leer `race_db.circuit` fuera de sesion activa (repositorio/backend).
-2. `in_pit` queda en `true` tras pit stop y no se resetea en vueltas siguientes.
-3. Pilotos DNF pueden acabar recibiendo puntos en `get_results`.
-4. Hay artefactos de estructura con nombres raros (carpetas/archivos con llaves) que conviene limpiar.
+```powershell
+pytest tests/ -v
+```
 
-Ver plan de trabajo en [TODO.md](TODO.md).
+## Nota de compatibilidad
 
-## Notas
-
-- Este README describe el estado real actual del repositorio, no una arquitectura futura ideal.
-- Se recomienda limpiar archivos temporales `*.tmp` y artefactos de estructura antes de ampliar el backend.
+Se mantiene [backend/main.py](backend/main.py) como wrapper temporal para redirigir al nuevo entrypoint.

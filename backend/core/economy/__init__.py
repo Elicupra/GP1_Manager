@@ -1,0 +1,1 @@
+"""Generic economy primitives."""

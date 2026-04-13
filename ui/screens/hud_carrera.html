@@ -1,0 +1,862 @@
+<!-- F1 Manager — HUD Carrera -->
+<!-- Todos los campos dinámicos marcados con ZMQ: campo_json -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 Manager — HUD Carrera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary:   #0a0a0f;
+    --bg-panel:     #111118;
+    --bg-card:      #1a1a24;
+    --accent-red:   #e8001e;
+    --accent-amber: #f5a623;
+    --accent-green: #00d45e;
+    --accent-blue:  #0099ff;
+    --accent-white: #ffffff;
+    --text-primary: #f0f0f5;
+    --text-muted:   #6b6b80;
+    --border:       #2a2a38;
+    --glow-red:     rgba(232,0,30,0.12);
+    --glow-green:   rgba(0,212,94,0.10);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Barlow', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ───────────────────────────────────────────── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    animation: slideDown .5s ease;
+  }
+
+  .race-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .race-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+  }
+
+  .lap-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .lap-counter span {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .weather-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .weather-icon {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    box-shadow: 0 0 6px var(--accent-blue);
+  }
+  .weather-icon.dry { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber); }
+
+  .sc-badge {
+    background: var(--accent-amber);
+    color: #000;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 3px 10px;
+    letter-spacing: 1px;
+    display: none;
+  }
+  .sc-badge.active { display: block; animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── MAIN LAYOUT ────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    grid-template-rows: 1fr;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── TIMING TOWER ───────────────────────────────────────── */
+  .timing-tower {
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideLeft .5s ease .1s both;
+  }
+
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    padding: 10px 14px 6px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .timing-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .timing-row {
+    display: grid;
+    grid-template-columns: 28px 18px 1fr 70px 50px;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-bottom: 1px solid rgba(42,42,56,.5);
+    transition: background .2s;
+    cursor: default;
+  }
+  .timing-row:hover { background: var(--bg-card); }
+  .timing-row.player-car { background: var(--glow-red); border-left: 2px solid var(--accent-red); }
+  .timing-row.player-car:hover { background: rgba(232,0,30,.18); }
+
+  .pos {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .timing-row.player-car .pos { color: var(--accent-red); }
+
+  .car-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .driver-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gap {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: right;
+    color: var(--text-muted);
+  }
+  .gap.leader { color: var(--accent-green); font-weight: 600; }
+  .gap.gaining { color: var(--accent-green); }
+  .gap.losing  { color: var(--accent-red); }
+
+  .tyre-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+    margin: 0 auto;
+    position: relative;
+  }
+  .tyre-dot.soft   { border-color: var(--accent-red);   background: rgba(232,0,30,.2); }
+  .tyre-dot.medium { border-color: var(--accent-amber);  background: rgba(245,166,35,.2); }
+  .tyre-dot.hard   { border-color: #e0e0e0;             background: rgba(224,224,224,.1); }
+  .tyre-dot.inter  { border-color: var(--accent-green); background: rgba(0,212,94,.2); }
+  .tyre-dot.wet    { border-color: var(--accent-blue);  background: rgba(0,153,255,.2); }
+
+  /* ── CENTER — TELEMETRY ─────────────────────────────────── */
+  .center {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    animation: fadeIn .6s ease .2s both;
+  }
+
+  .telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .telem-card {
+    background: var(--bg-card);
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .telem-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .telem-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+
+  .telem-unit {
+    font-family: 'Barlow', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .telem-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .telem-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .8s ease;
+  }
+  .bar-fuel  { background: var(--accent-blue); }
+  .bar-tyre  { background: var(--accent-amber); }
+  .bar-ers   { background: var(--accent-green); }
+
+  .telem-value.critical { color: var(--accent-red); animation: pulse 1.5s infinite; }
+  .telem-value.warn     { color: var(--accent-amber); }
+  .telem-value.ok       { color: var(--accent-green); }
+
+  /* ── STRATEGY PANEL ─────────────────────────────────────── */
+  .strategy-panel {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .strat-section {
+    background: var(--bg-panel);
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .strat-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  /* Stint visualizer */
+  .stint-track {
+    height: 20px;
+    background: var(--bg-card);
+    border-radius: 2px;
+    display: flex;
+    overflow: hidden;
+    gap: 2px;
+    margin: 4px 0;
+  }
+  .stint-seg {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: #000;
+    transition: all .5s;
+  }
+  .stint-seg.soft   { background: var(--accent-red); }
+  .stint-seg.medium { background: var(--accent-amber); }
+  .stint-seg.hard   { background: #e0e0e0; }
+  .stint-seg.done   { opacity: .35; }
+  .stint-seg.active { box-shadow: 0 0 8px rgba(255,255,255,.3); }
+
+  /* Mini stat rows */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .stat-key { color: var(--text-muted); font-size: 12px; }
+  .stat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .stat-val.up   { color: var(--accent-green); }
+  .stat-val.down { color: var(--accent-red); }
+
+  /* Pit window */
+  .pit-window {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    border-radius: 2px;
+  }
+  .pit-window-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin: 8px 0 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pit-window-range {
+    position: absolute;
+    height: 100%;
+    background: var(--accent-green);
+    border-radius: 3px;
+    opacity: .7;
+  }
+  .pit-window-now {
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    background: var(--accent-red);
+    top: 0;
+  }
+  .pit-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ── RIGHT PANEL — DRIVER CARDS ─────────────────────────── */
+  .right-panel {
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideRight .5s ease .15s both;
+  }
+
+  .driver-card {
+    flex: 1;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .driver-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent-red);
+  }
+  .driver-card:nth-child(2)::before { background: var(--accent-blue); }
+
+  .driver-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .driver-number-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: var(--accent-red);
+    min-width: 36px;
+  }
+  .driver-card:nth-child(2) .driver-number-badge { color: var(--accent-blue); }
+
+  .driver-meta { flex: 1; }
+  .driver-meta-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: .5px;
+  }
+  .driver-meta-pos {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .driver-tyre-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tyre-compound-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .tyre-compound-label.soft   { background: var(--accent-red);   color: #fff; }
+  .tyre-compound-label.medium { background: var(--accent-amber);  color: #000; }
+  .tyre-compound-label.hard   { background: #d0d0d0;             color: #000; }
+  .tyre-age {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .wear-bars { display: flex; flex-direction: column; gap: 4px; }
+  .wear-row  { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .wear-label { color: var(--text-muted); min-width: 22px; font-family: 'JetBrains Mono', monospace; }
+  .wear-track {
+    flex: 1; height: 5px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .wear-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+  .wear-fill.ok       { background: var(--accent-green); }
+  .wear-fill.warn     { background: var(--accent-amber); }
+  .wear-fill.critical { background: var(--accent-red); }
+  .wear-pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 32px; text-align: right; }
+
+  /* Radio msg */
+  .radio-msg {
+    background: var(--bg-card);
+    border-left: 2px solid var(--accent-amber);
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    display: none;
+  }
+  .radio-msg.visible { display: block; animation: fadeIn .4s ease; }
+
+  /* ── BOTTOM EVENTS BAR ──────────────────────────────────── */
+  .events-bar {
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    overflow: hidden;
+    animation: slideUp .5s ease .3s both;
+  }
+
+  .event-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    animation: fadeIn .4s ease forwards;
+  }
+  .event-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .event-dot.incident { background: var(--accent-red); }
+  .event-dot.pitstop  { background: var(--accent-amber); }
+  .event-dot.fastest  { background: var(--accent-green); }
+  .event-dot.info     { background: var(--accent-blue); }
+
+  /* ── ANIMATIONS ─────────────────────────────────────────── */
+  @keyframes slideDown  { from{transform:translateY(-20px);opacity:0} to{transform:none;opacity:1} }
+  @keyframes slideLeft  { from{transform:translateX(-20px);opacity:0} to{transform:none;opacity:1} }
+  @keyframes slideRight { from{transform:translateX(20px);opacity:0} to{transform:none;opacity:1} }
+  @keyframes slideUp    { from{transform:translateY(20px);opacity:0} to{transform:none;opacity:1} }
+  @keyframes fadeIn     { from{opacity:0} to{opacity:1} }
+
+  /* scrollbar hide */
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ── TOP BAR ─────────────────────────────────────────────── -->
+<div class="top-bar">
+  <div class="race-info">
+    <span class="race-name">Grand Prix de Montréal</span><!-- ZMQ: race.name -->
+    <div class="lap-counter">
+      VUELTA <span id="lap-current">38</span><!-- ZMQ: race.lap_current -->
+      / <span id="lap-total">70</span><!-- ZMQ: race.lap_total -->
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="weather-block">
+      <div class="weather-icon dry" id="weather-icon"></div><!-- ZMQ: weather.condition -->
+      <span id="weather-label">SECO — 28°C</span><!-- ZMQ: weather.label -->
+    </div>
+    <div class="sc-badge" id="sc-badge">SAFETY CAR</div><!-- ZMQ: race.safety_car -->
+  </div>
+
+  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">
+    APEX RACING<!-- ZMQ: team.name -->
+  </div>
+</div>
+
+<!-- ── MAIN ─────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- TIMING TOWER -->
+  <div class="timing-tower">
+    <div class="section-title">Clasificación</div>
+    <div class="timing-list" id="timing-list">
+      <!-- ZMQ: race.standings[] -->
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+
+    <!-- TELEMETRY CARDS -->
+    <div class="telemetry-grid">
+
+      <div class="telem-card">
+        <div class="telem-label">Velocidad</div>
+        <div class="telem-value" id="speed">312</div><!-- ZMQ: telemetry.speed_kmh -->
+        <div class="telem-unit">km/h</div>
+      </div>
+
+      <div class="telem-card">
+        <div class="telem-label">Combustible</div>
+        <div class="telem-value ok" id="fuel-pct">52</div><!-- ZMQ: telemetry.fuel_pct -->
+        <div class="telem-unit">%</div>
+        <div class="telem-bar"><div class="telem-bar-fill bar-fuel" id="fuel-bar" style="width:52%"></div></div>
+      </div>
+
+      <div class="telem-card">
+        <div class="telem-label">ERS</div>
+        <div class="telem-value ok" id="ers-pct">78</div><!-- ZMQ: telemetry.ers_pct -->
+        <div class="telem-unit">% carga</div>
+        <div class="telem-bar"><div class="telem-bar-fill bar-ers" id="ers-bar" style="width:78%"></div></div>
+      </div>
+
+      <div class="telem-card">
+        <div class="telem-label">Temp. Frenos</div>
+        <div class="telem-value warn" id="brake-temp">847</div><!-- ZMQ: telemetry.brake_temp_c -->
+        <div class="telem-unit">°C delanteros</div>
+      </div>
+
+    </div>
+
+    <!-- STRATEGY -->
+    <div class="strategy-panel">
+
+      <!-- Stint plan -->
+      <div class="strat-section">
+        <div class="strat-title">Plan de Carrera — K. Hartmann</div><!-- ZMQ: drivers[0].name -->
+
+        <div>
+          <div class="stat-row" style="margin-bottom:6px;">
+            <span class="stat-key" style="font-size:11px;">STINT ACTUAL — BLANDOS — 14 vueltas</span><!-- ZMQ: strategy.current_stint -->
+          </div>
+          <div class="stint-track">
+            <div class="stint-seg soft done" style="width:20%">S·12</div><!-- ZMQ: strategy.stints[0] -->
+            <div class="stint-seg medium done" style="width:34%">M·24</div><!-- ZMQ: strategy.stints[1] -->
+            <div class="stint-seg soft active" style="width:46%">S·14+</div><!-- ZMQ: strategy.stints[2] -->
+          </div>
+          <div class="pit-labels">
+            <span>V.1</span><span>V.13</span><span>V.37</span><span>V.70</span>
+          </div>
+        </div>
+
+        <div class="pit-window">
+          <div class="stat-row">
+            <span class="stat-key">Ventana de Pit Óptima</span>
+            <span class="stat-val" style="color:var(--accent-green);">V.42 – V.48</span><!-- ZMQ: strategy.pit_window -->
+          </div>
+          <div class="pit-window-bar">
+            <div class="pit-window-range" style="left:54%;width:12%"></div>
+            <div class="pit-window-now" style="left:54%"></div><!-- ZMQ: race.lap_pct -->
+          </div>
+          <div class="pit-labels">
+            <span>V.1</span><span style="color:var(--accent-green)">V.42</span><span style="color:var(--accent-green)">V.48</span><span>V.70</span>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <span class="stat-key">Undercut vs P2</span>
+          <span class="stat-val up">+1.4s</span><!-- ZMQ: strategy.undercut_gap -->
+        </div>
+        <div class="stat-row">
+          <span class="stat-key">Delta si entras HOY</span>
+          <span class="stat-val up">+0.8s neto</span><!-- ZMQ: strategy.pit_delta_now -->
+        </div>
+      </div>
+
+      <!-- Rival monitor -->
+      <div class="strat-section">
+        <div class="strat-title">Monitor de Rivales</div>
+
+        <div class="stat-row">
+          <span class="stat-key">P1 — N. Marchetti (M·31)</span><!-- ZMQ: rivals[0] -->
+          <span class="stat-val down">+4.2s</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-key">P2 — T. Okonkwo (S·10)</span>
+          <span class="stat-val down">+1.1s</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-key">P4 — L. Svensson (M·22)</span>
+          <span class="stat-val up">–2.9s</span>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+          <div class="stat-row">
+            <span class="stat-key">Vuelta rápida actual</span>
+            <span class="stat-val" style="color:var(--accent-blue);">1:16.841</span><!-- ZMQ: race.fastest_lap -->
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Tu mejor vuelta</span>
+            <span class="stat-val">1:17.209</span><!-- ZMQ: drivers[0].best_lap -->
+          </div>
+          <div class="stat-row">
+            <span class="stat-key">Ritmo medio último stint</span>
+            <span class="stat-val">1:17.54</span><!-- ZMQ: drivers[0].stint_avg -->
+          </div>
+        </div>
+
+        <!-- Modo motor -->
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <button onclick="setMode('eco')" style="flex:1;padding:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:.2s;" id="btn-eco">ECO</button>
+          <button onclick="setMode('standard')" style="flex:1;padding:6px;background:var(--accent-green);border:1px solid var(--accent-green);color:#000;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;" id="btn-std">STANDARD</button>
+          <button onclick="setMode('push')" style="flex:1;padding:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;" id="btn-push">PUSH</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT — DRIVER CARDS -->
+  <div class="right-panel">
+    <div class="section-title">Tus Pilotos</div>
+
+    <!-- Driver 1 -->
+    <div class="driver-card">
+      <div class="driver-header">
+        <div class="driver-number-badge">44</div><!-- ZMQ: drivers[0].number -->
+        <div class="driver-meta">
+          <div class="driver-meta-name">K. HARTMANN</div><!-- ZMQ: drivers[0].name -->
+          <div class="driver-meta-pos">P3 — +4.2s del líder</div><!-- ZMQ: drivers[0].position / gap_to_leader -->
+        </div>
+      </div>
+
+      <div class="driver-tyre-row">
+        <span class="tyre-compound-label soft">BLANDO</span><!-- ZMQ: drivers[0].tyre.compound -->
+        <span class="tyre-age">14 vueltas</span><!-- ZMQ: drivers[0].tyre.age -->
+        <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">DRS <span style="color:var(--accent-green);font-weight:700;">ON</span></span><!-- ZMQ: drivers[0].drs -->
+      </div>
+
+      <div class="wear-bars">
+        <div class="wear-row">
+          <span class="wear-label">FL</span>
+          <div class="wear-track"><div class="wear-fill warn" style="width:62%"></div></div>
+          <span class="wear-pct">62%</span><!-- ZMQ: drivers[0].tyre.wear.fl -->
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">FR</span>
+          <div class="wear-track"><div class="wear-fill warn" style="width:58%"></div></div>
+          <span class="wear-pct">58%</span>
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">RL</span>
+          <div class="wear-track"><div class="wear-fill ok" style="width:44%"></div></div>
+          <span class="wear-pct">44%</span>
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">RR</span>
+          <div class="wear-track"><div class="wear-fill ok" style="width:41%"></div></div>
+          <span class="wear-pct">41%</span>
+        </div>
+      </div>
+
+      <div class="radio-msg visible">"Delantera izquierda empezando a sobrecalentar."</div><!-- ZMQ: drivers[0].radio_msg -->
+    </div>
+
+    <!-- Driver 2 -->
+    <div class="driver-card">
+      <div class="driver-header">
+        <div class="driver-number-badge">7</div><!-- ZMQ: drivers[1].number -->
+        <div class="driver-meta">
+          <div class="driver-meta-name">R. VASQUEZ</div><!-- ZMQ: drivers[1].name -->
+          <div class="driver-meta-pos">P8 — +22.1s del líder</div>
+        </div>
+      </div>
+
+      <div class="driver-tyre-row">
+        <span class="tyre-compound-label medium">MEDIO</span><!-- ZMQ: drivers[1].tyre.compound -->
+        <span class="tyre-age">24 vueltas</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">DRS <span style="color:var(--accent-red);font-weight:700;">OFF</span></span>
+      </div>
+
+      <div class="wear-bars">
+        <div class="wear-row">
+          <span class="wear-label">FL</span>
+          <div class="wear-track"><div class="wear-fill critical" style="width:88%"></div></div>
+          <span class="wear-pct" style="color:var(--accent-red);">88%</span>
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">FR</span>
+          <div class="wear-track"><div class="wear-fill critical" style="width:82%"></div></div>
+          <span class="wear-pct" style="color:var(--accent-red);">82%</span>
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">RL</span>
+          <div class="wear-track"><div class="wear-fill warn" style="width:71%"></div></div>
+          <span class="wear-pct">71%</span>
+        </div>
+        <div class="wear-row">
+          <span class="wear-label">RR</span>
+          <div class="wear-track"><div class="wear-fill warn" style="width:68%"></div></div>
+          <span class="wear-pct">68%</span>
+        </div>
+      </div>
+
+      <div class="radio-msg visible">"Necesito entrar ya, los neumáticos están muertos."</div><!-- ZMQ: drivers[1].radio_msg -->
+    </div>
+
+  </div>
+</div>
+
+<!-- ── EVENTS BAR ─────────────────────────────────────────── -->
+<div class="events-bar"><!-- ZMQ: race.events[] -->
+  <div class="event-tag" style="animation-delay:.1s">
+    <div class="event-dot fastest"></div>
+    <span>V.36 · VUELTA RÁPIDA — N. Marchetti 1:16.841</span>
+  </div>
+  <div class="event-tag" style="animation-delay:.3s">
+    <div class="event-dot pitstop"></div>
+    <span>V.34 · PIT · T. Okonkwo → Blandos</span>
+  </div>
+  <div class="event-tag" style="animation-delay:.5s">
+    <div class="event-dot incident"></div>
+    <span>V.32 · INCIDENTE · F. Kowalski — investigación</span>
+  </div>
+</div>
+
+<script>
+  // ── TIMING DATA (simulado — en producción viene via ZeroMQ) ─────────────
+  const standings = [
+    {pos:1, num:23, name:"N. Marchetti", gap:"LÍDER", tyre:"medium", player:false},
+    {pos:2, num:11, name:"T. Okonkwo",  gap:"+3.1s",  tyre:"soft",   player:false},
+    {pos:3, num:44, name:"K. Hartmann", gap:"+4.2s",  tyre:"soft",   player:true},
+    {pos:4, num:55, name:"L. Svensson", gap:"+7.1s",  tyre:"medium", player:false},
+    {pos:5, num:16, name:"A. Ferreira", gap:"+9.4s",  tyre:"hard",   player:false},
+    {pos:6, num:4,  name:"P. Laurent",  gap:"+13.2s", tyre:"medium", player:false},
+    {pos:7, num:81, name:"C. Müller",   gap:"+17.8s", tyre:"hard",   player:false},
+    {pos:8, num:7,  name:"R. Vasquez",  gap:"+22.1s", tyre:"medium", player:true},
+    {pos:9, num:63, name:"H. Nakamura", gap:"+25.4s", tyre:"hard",   player:false},
+    {pos:10,num:77, name:"B. Adeyemi",  gap:"+31.0s", tyre:"soft",   player:false},
+  ];
+
+  function buildTiming() {
+    const list = document.getElementById('timing-list');
+    list.innerHTML = '';
+    standings.forEach((car, i) => {
+      const row = document.createElement('div');
+      row.className = 'timing-row' + (car.player ? ' player-car' : '');
+      row.style.animationDelay = (i * 0.04) + 's';
+      row.style.animation = 'fadeIn .3s ease both';
+      row.style.animationDelay = (i * 0.05) + 's';
+      row.innerHTML = `
+        <div class="pos">${car.pos}</div>
+        <div class="car-num">${car.num}</div>
+        <div class="driver-name">${car.name}</div>
+        <div class="gap ${car.pos===1?'leader':''}">${car.gap}</div>
+        <div class="tyre-dot ${car.tyre}"></div>
+      `;
+      list.appendChild(row);
+    });
+  }
+  buildTiming();
+
+  // ── MODO MOTOR ───────────────────────────────────────────────
+  function setMode(mode) {
+    ['eco','standard','push'].forEach(m => {
+      const btn = document.getElementById('btn-' + (m==='standard'?'std':m));
+      btn.style.background = 'var(--bg-card)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text-muted)';
+    });
+    const active = document.getElementById('btn-' + (mode==='standard'?'std':mode));
+    active.style.background = 'var(--accent-green)';
+    active.style.borderColor = 'var(--accent-green)';
+    active.style.color = '#000';
+    // En producción: enviar REQ ZeroMQ al backend Python
+    // zmq_send({type:"set_engine_mode", driver:0, mode:mode})
+  }
+
+  // ── SIMULAR TICKER (demo) ────────────────────────────────────
+  let lap = 38;
+  setInterval(() => {
+    lap = Math.min(70, lap + 1);
+    document.getElementById('lap-current').textContent = lap;
+    // Actualizar combustible
+    const fuel = Math.max(10, 52 - (lap - 38) * 1.2);
+    document.getElementById('fuel-pct').textContent = Math.round(fuel);
+    document.getElementById('fuel-bar').style.width = fuel + '%';
+    document.getElementById('fuel-pct').className = 'telem-value ' + (fuel < 20 ? 'critical' : fuel < 35 ? 'warn' : 'ok');
+  }, 4000);
+</script>
+</body>
+</html>

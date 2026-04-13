@@ -205,7 +205,7 @@ def seed(db_url: str = DB_URL) -> None:
         ])
 
         s.commit()
-        print(f"✓ Base de datos poblada: {db_url}")
+        print(f"OK Base de datos poblada: {db_url}")
         print(f"  Temporada: {season.year}")
         print(f"  Circuitos: {len(circuits)}")
         print(f"  Equipos  : {len(teams)}")

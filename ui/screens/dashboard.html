@@ -1,0 +1,449 @@
+<!-- F1 Manager — Dashboard del Equipo -->
+<!-- ui/screens/dashboard.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>F1 Manager — Dashboard</title>
+<script src="../assets/js/alpine.min.js" defer></script>
+<script src="../assets/js/chart.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary:#0a0a0f; --bg-panel:#111118; --bg-card:#1a1a24;
+  --accent-red:#e8001e; --accent-amber:#f5a623; --accent-green:#00d45e; --accent-blue:#0099ff;
+  --text-primary:#f0f0f5; --text-muted:#6b6b80; --border:#2a2a38;
+  --glow-red:rgba(232,0,30,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Barlow',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:var(--bg-primary);display:flex;align-items:center;justify-content:center;z-index:100;}
+.loading-text{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:4px;color:var(--text-muted);animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:var(--bg-panel);border-bottom:1px solid var(--border);flex-shrink:0;}
+.page-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;}
+.team-badge{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--text-muted);letter-spacing:2px;}
+.top-kpis{display:flex;gap:24px;}
+.top-kpi{text-align:center;}
+.top-kpi-val{font-family:'Bebas Neue',sans-serif;font-size:20px;}
+.top-kpi-lbl{font-size:10px;color:var(--text-muted);letter-spacing:1px;}
+
+/* Grid */
+.grid{flex:1;display:grid;grid-template-columns:1fr 1fr 320px;grid-template-rows:1fr 1fr;gap:1px;background:var(--border);overflow:hidden;}
+
+/* Panel */
+.panel{background:var(--bg-panel);padding:18px 22px;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+.panel-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:8px;flex-shrink:0;}
+
+/* Campeonato */
+.champ-row{display:flex;align-items:center;gap:14px;padding:7px 0;border-bottom:1px solid rgba(42,42,56,.5);transition:background .2s;}
+.champ-row:hover{background:var(--bg-card);padding-left:6px;}
+.champ-pos{font-family:'Bebas Neue',sans-serif;font-size:26px;min-width:36px;text-align:center;color:var(--text-muted);}
+.champ-pos.player{color:var(--accent-red);}
+.champ-name{flex:1;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;}
+.champ-bar-wrap{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px;}
+.champ-bar{height:100%;border-radius:2px;transition:width 1.2s ease;}
+.champ-pts{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;}
+
+/* Pilotos */
+.driver-row{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(42,42,56,.5);}
+.drv-num{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;}
+.drv-name{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;}
+.drv-sub{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.drv-pts{font-family:'Bebas Neue',sans-serif;font-size:24px;}
+.drv-status{font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:2px;display:block;text-align:right;margin-top:3px;}
+.status-ok{background:rgba(0,212,94,.15);color:var(--accent-green);}
+.status-warn{background:rgba(245,166,35,.15);color:var(--accent-amber);}
+.status-critical{background:rgba(232,0,30,.15);color:var(--accent-red);}
+.form-dots{display:flex;gap:3px;margin-top:5px;}
+.form-dot{width:10px;height:10px;border-radius:50%;}
+.form-w{background:var(--accent-green);}
+.form-p{background:var(--accent-amber);}
+.form-r{background:var(--accent-red);}
+.form-n{background:var(--border);}
+
+/* Coche */
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.comp-card{background:var(--bg-card);padding:12px 14px;}
+.comp-label{font-size:10px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.comp-val{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;}
+.comp-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px;}
+.comp-bar-fill{height:100%;border-radius:2px;transition:width 1.2s ease;}
+
+/* Finanzas mini */
+.budget-wrap{display:flex;align-items:center;gap:16px;}
+.budget-ring-svg{flex-shrink:0;}
+.budget-lines{flex:1;display:flex;flex-direction:column;gap:6px;}
+.budget-line{display:flex;justify-content:space-between;font-size:12px;}
+.budget-key{color:var(--text-muted);}
+.budget-val{font-family:'JetBrains Mono',monospace;font-weight:600;}
+
+/* Próxima carrera + noticias (panel derecho) */
+.race-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;line-height:1.1;}
+.race-meta{font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:4px;}
+.race-days{color:var(--accent-amber);font-weight:600;}
+.session-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg-card);margin-bottom:4px;}
+.session-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;}
+.session-proj{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;}
+.proj-green{color:var(--accent-green);}
+.proj-amber{color:var(--accent-amber);}
+.news-item{padding:10px 12px;background:var(--bg-card);border-left:2px solid var(--border);margin-bottom:4px;cursor:pointer;transition:all .2s;}
+.news-item:hover{border-left-color:var(--accent-red);}
+.news-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;}
+.news-body{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
+.news-meta-row{display:flex;justify-content:space-between;margin-top:5px;}
+.news-tag{font-size:10px;font-weight:700;letter-spacing:1px;}
+.news-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--border);}
+
+/* Nav lateral */
+.nav-btn{width:100%;padding:10px 14px;background:transparent;border:1px solid var(--border);color:var(--text-muted);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.nav-btn:hover{border-color:var(--accent-red);color:var(--text-primary);background:var(--glow-red);}
+
+/* Animaciones */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.panel{animation:fadeIn .5s ease both;}
+.panel:nth-child(2){animation-delay:.05s}
+.panel:nth-child(3){animation-delay:.1s}
+.panel:nth-child(4){animation-delay:.15s}
+.panel:nth-child(5){animation-delay:.2s}
+::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body x-data="dashboard()" x-init="init()">
+
+<!-- Loading -->
+<div class="loading-overlay" x-show="loading" x-transition>
+  <span class="loading-text">CARGANDO DATOS...</span>
+</div>
+
+<!-- Top bar -->
+<div class="topbar" x-show="!loading">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="page-title">Dashboard</span>
+    <span class="team-badge" x-text="(data.team?.name ?? '---') + ' · TEMPORADA ' + (data.season?.year ?? '')"></span>
+  </div>
+  <div class="top-kpis">
+    <div class="top-kpi">
+      <div class="top-kpi-val" style="color:var(--accent-green)" x-text="(data.championship?.position ?? '-') + 'º'"></div>
+      <div class="top-kpi-lbl">Constructores</div>
+    </div>
+    <div class="top-kpi">
+      <div class="top-kpi-val" style="color:var(--accent-amber)" x-text="data.championship?.points ?? '-'"></div>
+      <div class="top-kpi-lbl">Puntos</div>
+    </div>
+    <div class="top-kpi">
+      <div class="top-kpi-val" x-text="(data.season?.race_current ?? '-') + '/' + (data.season?.race_total ?? '-')"></div>
+      <div class="top-kpi-lbl">Carrera</div>
+    </div>
+    <div class="top-kpi">
+      <div class="top-kpi-val" style="color:var(--accent-blue)" x-text="budgetAvailable"></div>
+      <div class="top-kpi-lbl">Budget libre</div>
+    </div>
+  </div>
+</div>
+
+<!-- Grid principal -->
+<div class="grid" x-show="!loading">
+
+  <!-- CAMPEONATO -->
+  <div class="panel">
+    <div class="panel-title">Campeonato de Constructores</div>
+    <div style="overflow-y:auto;flex:1;">
+      <template x-for="team in champStandings" :key="team.id">
+        <div class="champ-row" :style="team.is_player ? 'background:var(--glow-red);border-left:2px solid var(--accent-red);padding-left:10px;' : ''">
+          <div class="champ-pos" :class="team.is_player ? 'player' : ''" x-text="team.position + 'º'"></div>
+          <div style="flex:1;">
+            <div class="champ-name" x-text="team.name"></div>
+            <div class="champ-bar-wrap">
+              <div class="champ-bar" :style="`width:${team.pct}%;background:${team.color}`"></div>
+            </div>
+          </div>
+          <div class="champ-pts" x-text="team.points"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- PILOTOS -->
+  <div class="panel">
+    <div class="panel-title">Tus Pilotos</div>
+    <template x-for="driver in data.drivers" :key="driver.id">
+      <div class="driver-row">
+        <div class="drv-num" :style="`color:${driver.number === 44 ? 'var(--accent-red)' : 'var(--accent-blue)'}`" x-text="driver.number"></div>
+        <div>
+          <div class="drv-name" x-text="driver.name"></div>
+          <div class="drv-sub" x-text="`P${driver.championship_pos} campeonato · ${driver.points} pts`"></div>
+          <div class="form-dots">
+            <template x-for="f in driver.form" :key="f + Math.random()">
+              <div class="form-dot" :class="`form-${f.toLowerCase()}`"></div>
+            </template>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="drv-pts" x-text="driver.points"></div>
+          <div class="drv-status"
+            :class="driver.contract_status === 'active' ? 'status-ok' : driver.contract_status === 'expiring' ? 'status-warn' : 'status-critical'"
+            x-text="driver.contract_status === 'active' ? 'FORMA ALTA' : driver.contract_status === 'expiring' ? 'CONTRATO EXP.' : 'CRÍTICO'">
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div style="display:flex;gap:8px;margin-top:auto;">
+      <div style="flex:1;background:var(--bg-card);padding:10px 12px;">
+        <div class="panel-title" style="border:none;padding:0;margin-bottom:6px;">Moral del equipo</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;" :style="`color:${moraleColor}`" x-text="moraleText"></div>
+          <div style="flex:1;">
+            <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+              <div :style="`width:${(data.team?.morale ?? 0.7)*100}%;height:100%;background:${moraleColor};border-radius:2px;`"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;background:var(--bg-card);padding:10px 12px;">
+        <div class="panel-title" style="border:none;padding:0;margin-bottom:6px;">Pit stop medio</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--accent-amber);" x-text="(data.team?.pitstop_mean_s ?? 2.5).toFixed(2) + 's'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRÓXIMA CARRERA + NAVEGACIÓN (columna derecha, span 2 filas) -->
+  <div class="panel" style="grid-row:1/3;">
+    <div class="panel-title">Próxima Carrera</div>
+    <div class="race-name" x-text="data.next_race?.name ?? '—'"></div>
+    <div class="race-meta">
+      <span x-text="data.next_race?.circuit ?? ''"></span>
+      · Ronda <span x-text="data.next_race?.round ?? ''"></span>
+    </div>
+    <div class="race-meta"><span class="race-days" x-text="(data.next_race?.days_until ?? 0) + ' días'"></span></div>
+
+    <div>
+      <div class="session-row"><span class="session-name">QUALI</span><span class="session-proj proj-amber">P3–P5 proj.</span></div>
+      <div class="session-row"><span class="session-name">CARRERA</span><span class="session-proj proj-green">P3–P4 proj.</span></div>
+    </div>
+
+    <div style="background:var(--bg-card);padding:10px 12px;border-left:2px solid var(--accent-blue);">
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">Previsión meteorológica</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--accent-blue);" x-text="data.next_race?.weather_forecast ?? '—'"></div>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px;">Noticias del Paddock</div>
+    <div style="overflow-y:auto;flex:1;">
+      <template x-for="notif in data.notifications" :key="notif.title">
+        <div class="news-item" :style="`border-left-color:${notif.color}`">
+          <div class="news-title" x-text="notif.title"></div>
+          <div class="news-body" x-text="notif.body"></div>
+          <div class="news-meta-row">
+            <span class="news-tag" :style="`color:${notif.color}`">NOTICIA</span>
+            <span class="news-time" x-text="notif.time_label"></span>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px;">Navegación</div>
+    <button class="nav-btn" @click="navigate('garage')">Garage</button>
+    <button class="nav-btn" @click="navigate('market')">Mercado de Pilotos</button>
+    <button class="nav-btn" @click="navigate('finances')">Finanzas</button>
+    <button class="nav-btn" @click="navigate('strategy')">Estrategia</button>
+    <button class="nav-btn" style="border-color:var(--accent-red);color:var(--accent-red);" @click="startRace()">
+      INICIAR GP · RONDA <span x-text="data.next_race?.round ?? 9"></span>
+    </button>
+  </div>
+
+  <!-- COCHE -->
+  <div class="panel">
+    <div class="panel-title">Estado del Coche</div>
+    <div class="comp-grid">
+      <template x-for="[key, comp] in Object.entries(data.car?.components ?? {})" :key="key">
+        <div class="comp-card">
+          <div class="comp-label" x-text="compLabel(key)"></div>
+          <div class="comp-val" :style="`color:${ratingColor(comp.rating)}`" x-text="comp.rating"></div>
+          <div class="comp-bar">
+            <div class="comp-bar-fill" :style="`width:${comp.rating}%;background:${ratingColor(comp.rating)}`"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(42,42,56,.5);">
+        <span style="color:var(--text-muted);">Fiabilidad media</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:600;" :style="`color:${relColor}`" x-text="relText"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;">
+        <span style="color:var(--text-muted);">Tokens desarrollo</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent-amber);"
+          x-text="`${data.car?.dev_tokens_used ?? 0}/${data.car?.dev_tokens_total ?? 8}`"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINANZAS MINI -->
+  <div class="panel">
+    <div class="panel-title">Finanzas — Budget Cap <span x-text="data.season?.year ?? ''"></span></div>
+    <div class="budget-wrap">
+      <svg class="budget-ring-svg" width="90" height="90" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2a2a38" stroke-width="3"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent-red)" stroke-width="3"
+          :stroke-dasharray="`${data.budget?.spent_pct ?? 0} ${100-(data.budget?.spent_pct ?? 0)}`"
+          stroke-linecap="round" transform="rotate(-90 18 18)"/>
+        <text x="18" y="19" text-anchor="middle" dominant-baseline="middle"
+          style="font-family:'Bebas Neue',sans-serif;font-size:7px;fill:#e8001e;"
+          x-text="`${data.budget?.spent_pct ?? 0}%`"></text>
+      </svg>
+      <div class="budget-lines">
+        <div class="budget-line">
+          <span class="budget-key">Cap total</span>
+          <span class="budget-val" x-text="`${data.budget?.cap ?? 150}M€`"></span>
+        </div>
+        <div class="budget-line">
+          <span class="budget-key">Gastado</span>
+          <span class="budget-val" style="color:var(--accent-red);" x-text="`${data.budget?.spent ?? 0}M€`"></span>
+        </div>
+        <div class="budget-line">
+          <span class="budget-key">Disponible</span>
+          <span class="budget-val" style="color:var(--accent-green);" x-text="`${data.budget?.available ?? 0}M€`"></span>
+        </div>
+        <div class="budget-line">
+          <span class="budget-key">Proyección</span>
+          <span class="budget-val" style="color:var(--accent-amber);" x-text="`${data.budget?.projected_eoy ?? 0}M€`"></span>
+        </div>
+      </div>
+    </div>
+    <button class="nav-btn" @click="navigate('finances')" style="margin-top:auto;">Ver Finanzas Completas →</button>
+  </div>
+
+</div><!-- /grid -->
+
+<script>
+function dashboard() {
+  return {
+    loading: true,
+    data: {},
+
+    // ── Computed ──────────────────────────────────────────────────────────
+
+    get champStandings() {
+      const teams = this.data.championship_standings ?? MOCK_CHAMP;
+      const max = Math.max(...teams.map(t => t.points), 1);
+      return teams.map(t => ({ ...t, pct: Math.round(t.points / max * 100) }));
+    },
+
+    get budgetAvailable() {
+      const v = this.data.budget?.available ?? 0;
+      return v >= 1 ? Math.round(v) + 'M' : Math.round(v * 1000) + 'k';
+    },
+
+    get moraleColor() {
+      const m = this.data.team?.morale ?? 0.7;
+      return m >= 0.75 ? 'var(--accent-green)' : m >= 0.5 ? 'var(--accent-amber)' : 'var(--accent-red)';
+    },
+
+    get moraleText() {
+      return Math.round((this.data.team?.morale ?? 0.7) * 100);
+    },
+
+    get relColor() {
+      const r = this.data.car?.avg_reliability ?? 0.96;
+      return r >= 0.95 ? 'var(--accent-green)' : r >= 0.90 ? 'var(--accent-amber)' : 'var(--accent-red)';
+    },
+
+    get relText() {
+      return Math.round((this.data.car?.avg_reliability ?? 0.96) * 100) + '%';
+    },
+
+    // ── Métodos ───────────────────────────────────────────────────────────
+
+    ratingColor(r) {
+      return r >= 90 ? 'var(--accent-green)' : r >= 80 ? 'var(--accent-amber)' : 'var(--accent-red)';
+    },
+
+    compLabel(key) {
+      const labels = { engine:'Motor', chassis:'Chasis', aero:'Aerodinámica',
+                       suspension:'Suspensión', ers:'ERS', gearbox:'Caja de cambios' };
+      return labels[key] ?? key;
+    },
+
+    async init() {
+      this.data = await window.pywebview.api.get_dashboard();
+      this.loading = false;
+    },
+
+    async navigate(screen) {
+      await window.pywebview.api.navigate(screen);
+    },
+
+    async startRace() {
+      const raceId = this.data.next_race?.id;
+      if (!raceId) return;
+      await window.pywebview.api.start_race(raceId);
+    }
+  }
+}
+
+// ── Datos de campeonato mock (no vienen de get_dashboard, consulta separada)
+const MOCK_CHAMP = [
+  {id:2,name:"Kronos Motorsport",points:229,position:1,color:"#0099ff",is_player:false},
+  {id:3,name:"Vertex Racing",    points:201,position:2,color:"#f5a623",is_player:false},
+  {id:1,name:"Apex Racing",      points:187,position:3,color:"#e8001e",is_player:true},
+  {id:4,name:"Solaris F1",       points:154,position:4,color:"#6b6b80",is_player:false},
+  {id:5,name:"Phoenix GP",       points:112,position:5,color:"#6b6b80",is_player:false},
+];
+
+// ── Mock pywebview para desarrollo en navegador
+if (!window.pywebview) {
+  window.pywebview = {
+    api: {
+      get_dashboard: async () => ({
+        ...MOCK_DATA,
+        championship_standings: MOCK_CHAMP,
+      }),
+      navigate: async (s) => console.log('[mock] navigate:', s),
+      start_race: async (id) => console.log('[mock] start_race:', id),
+    }
+  };
+}
+
+const MOCK_DATA = {
+  team: { id:1, name:"Apex Racing", morale:0.78, pitstop_mean_s:2.41 },
+  season: { year:2026, race_current:8, race_total:24 },
+  championship: { position:3, points:187, gap_to_leader:42 },
+  budget: { cap:150.0, spent:100.5, available:49.5, spent_pct:67, projected_eoy:143.2 },
+  next_race: { id:9, name:"Grand Prix de Montréal", circuit:"Circuit Gilles Villeneuve",
+               round:9, days_until:12, weather_forecast:"LLUVIA LIGERA · Dom 40%" },
+  drivers: [
+    { id:1, name:"K. Hartmann", number:44, nationality:"DE", championship_pos:3, points:124,
+      contract_status:"active", contract_end_year:2028, morale:0.85, form:["W","W","P","P","R"] },
+    { id:2, name:"R. Vasquez",  number:7,  nationality:"MX", championship_pos:8, points:63,
+      contract_status:"expiring", contract_end_year:2026, morale:0.55, form:["N","P","P","R","N"] }
+  ],
+  car: {
+    overall_rating:87.8, avg_reliability:0.96,
+    dev_tokens_used:6, dev_tokens_total:8,
+    components: {
+      engine:     { rating:87, reliability:0.94 },
+      chassis:    { rating:91, reliability:0.97 },
+      aero:       { rating:84, reliability:0.99 },
+      suspension: { rating:86, reliability:0.99 },
+      ers:        { rating:89, reliability:0.96 },
+      gearbox:    { rating:88, reliability:0.98 }
+    }
+  },
+  notifications: [
+    { title:"Contrato R. Vasquez", body:"Expira al final de temporada. Negociación pendiente.",
+      time_label:"HOY", color:"#f5a623" },
+    { title:"Actualización de motor", body:"Disponible desde GP 10. Coste estimado: 8.2M.",
+      time_label:"2D", color:"#0099ff" },
+    { title:"Aprobación FIA", body:"ERS Spec B homologado para uso en carrera.",
+      time_label:"3D", color:"#00d45e" }
+  ]
+};
+</script>
+</body>
+</html>
