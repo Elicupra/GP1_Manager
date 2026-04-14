@@ -860,7 +860,7 @@
 
 <script>
   // ── RACE DATA from Python backend ────────────────────────────────────────
-  let raceData = window.raceResults || {
+  let raceData = {
     race_name: 'Gran Premio',
     circuit_name: 'Circuito Genérico',
     total_laps: 70,
@@ -872,7 +872,10 @@
   let driverMap = {};
   let currentSnapshot = null;
   let snapshotIndex = 0;
-  const playbackSpeed = 1.0; // snapshots per second
+  const SNAPSHOT_INTERVAL_MS = 1000;
+  let playbackSpeedMultiplier = 1.0;
+  let isRacePaused = false;
+  let playbackTimer = null;
 
   function initDriverMap() {
     raceData.results.forEach((r, i) => {
@@ -959,7 +962,8 @@
     
     if (snapshotIndex < raceData.snapshots.length - 1) {
       playSnapshot(snapshotIndex + 1);
-      const interval = (SNAPSHOT_INTERVAL_MS / playbackSpeedMultiplier);
+      const safeSpeed = playbackSpeedMultiplier > 0 ? playbackSpeedMultiplier : 1.0;
+      const interval = (SNAPSHOT_INTERVAL_MS / safeSpeed);
       playbackTimer = setTimeout(playRaceReplay, interval);
     } else {
       // Race finished
@@ -1029,9 +1033,7 @@
     `;
     btn.textContent = 'VOLVER AL DASHBOARD';
     btn.onclick = () => {
-      window.pywebview.api.navigate('dashboard').then(() => {
-        window.location.reload();
-      });
+      window.location.href = 'dashboard.html';
     };
     
     overlay.appendChild(title);
@@ -1053,17 +1055,85 @@
     active.style.color = '#000';
   }
 
-  // ── INITIALIZE ──────────────────────────────────────────────
-  initDriverMap();
-  // Set default speed button as active
-  document.getElementById('btn-speed-100').classList.add('active');
-  if (raceData.snapshots && raceData.snapshots.length > 0) {
-    playSnapshot(0);
-    setTimeout(playRaceReplay, SNAPSHOT_INTERVAL_MS / playbackSpeedMultiplier);
-  } else {
-    // Fallback to showing final results
-    buildTiming();
+  async function loadRaceData() {
+    if (window.raceResults) {
+      raceData = window.raceResults;
+      return;
+    }
+
+    try {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.get_last_race_results) {
+        const payload = await window.pywebview.api.get_last_race_results();
+        if (payload && !payload.error) {
+          raceData = payload;
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('No se pudieron cargar resultados de carrera', err);
+    }
   }
+
+  function waitForPywebviewApi(timeoutMs = 3000) {
+    return new Promise((resolve) => {
+      const started = Date.now();
+
+      const isReady = () => (
+        window.pywebview
+        && window.pywebview.api
+        && typeof window.pywebview.api.get_last_race_results === 'function'
+      );
+
+      if (isReady()) {
+        resolve(true);
+        return;
+      }
+
+      const onReady = () => {
+        cleanup();
+        resolve(true);
+      };
+
+      const timer = setInterval(() => {
+        if (isReady()) {
+          cleanup();
+          resolve(true);
+          return;
+        }
+        if (Date.now() - started > timeoutMs) {
+          cleanup();
+          resolve(false);
+        }
+      }, 100);
+
+      const cleanup = () => {
+        clearInterval(timer);
+        window.removeEventListener('pywebviewready', onReady);
+      };
+
+      window.addEventListener('pywebviewready', onReady, { once: true });
+    });
+  }
+
+  async function bootstrapHud() {
+    await waitForPywebviewApi();
+    await loadRaceData();
+    initDriverMap();
+
+    // Set default speed button as active
+    document.getElementById('btn-speed-100').classList.add('active');
+
+    if (raceData.snapshots && raceData.snapshots.length > 0) {
+      playSnapshot(0);
+      setTimeout(playRaceReplay, SNAPSHOT_INTERVAL_MS / playbackSpeedMultiplier);
+    } else {
+      console.warn('HUD sin snapshots de carrera; se muestra fallback estatico');
+      buildTiming();
+    }
+  }
+
+  // ── INITIALIZE ──────────────────────────────────────────────
+  bootstrapHud();
 </script>
 </body>
 </html>

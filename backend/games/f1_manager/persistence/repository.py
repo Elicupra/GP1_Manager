@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.db.models import (
@@ -210,6 +210,11 @@ class F1Repository:
                 return
             race.is_completed = True
 
+            # Permite re-simular una carrera sin violar unique(race_id, driver_id).
+            # Hacemos delete directo y flush inmediato para evitar conflictos en autoflush.
+            s.execute(delete(DriverResult).where(DriverResult.race_id == race_id))
+            s.flush()
+
             for index, r in enumerate(results, start=1):
                 # grid_position comes from race simulator's initial order
                 grid_position = int(r.get("grid_position") or index)
@@ -227,15 +232,30 @@ class F1Repository:
                 )
                 s.add(dr)
 
-                # Actualizar championship del equipo
-                champ = s.scalars(
-                    select(Championship).where(
-                        Championship.season_id == race.season_id,
-                        Championship.team_id   == r["team_id"],
-                    )
-                ).first()
-                if champ:
-                    champ.points += r["points"]
+            # Recalcular puntos de constructores desde resultados persistidos
+            # para evitar doble conteo cuando se corre una carrera mas de una vez.
+            champs = list(
+                s.scalars(
+                    select(Championship).where(Championship.season_id == race.season_id)
+                ).all()
+            )
+            for champ in champs:
+                champ.points = 0.0
+
+            season_results = list(
+                s.execute(
+                    select(DriverResult.points, Driver.team_id)
+                    .join(Driver, Driver.id == DriverResult.driver_id)
+                    .join(Race, Race.id == DriverResult.race_id)
+                    .where(Race.season_id == race.season_id)
+                ).all()
+            )
+            points_by_team: dict[int, float] = {}
+            for points, team_id in season_results:
+                points_by_team[team_id] = points_by_team.get(team_id, 0.0) + float(points or 0.0)
+
+            for champ in champs:
+                champ.points = points_by_team.get(champ.team_id, 0.0)
 
             s.commit()
             self._update_championship_positions(race.season_id, s)

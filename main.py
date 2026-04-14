@@ -34,11 +34,18 @@ logger = logging.getLogger("f1_manager")
 class RaceLauncher:
     """Orquesta la transición entre la gestión PyWebView y la carrera Arcade."""
 
-    def __init__(self, repo: F1Repository, window: Any) -> None:
+    def __init__(
+        self,
+        repo: F1Repository,
+        window: Any,
+        on_results_ready: callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
         self._repo = repo
         self._window = window
+        self._on_results_ready = on_results_ready
 
     def launch(self, race_id: int) -> None:
+        logger.info("RaceLauncher.launch iniciado para race_id=%s", race_id)
         race = self._repo.get_race(race_id)
         if race is None:
             logger.error("Carrera %s no encontrada", race_id)
@@ -154,10 +161,10 @@ class RaceLauncher:
                 "results": results,
                 "snapshots": snapshots[:100],  # Limitar snapshots para memoria
             }
-            self._window.evaluate_js(
-                f"window.raceResults = {json.dumps(results_data, default=str)}"
-            )
+            if self._on_results_ready is not None:
+                self._on_results_ready(results_data)
             self._window.load_url((SCREENS_DIR / "hud_carrera.html").as_uri())
+            logger.info("RaceLauncher.launch finalizado para race_id=%s", race_id)
         except Exception:
             logger.exception("No se pudo restaurar PyWebView tras la carrera")
 
@@ -170,11 +177,36 @@ def _circuit_to_track_key(circuit_name: str) -> str:
 
 
 def _db_url() -> str:
+    if _is_demo_mode():
+        return f"sqlite:///{DATA_DIR / 'game_demo.db'}"
     return os.getenv("DB_URL", f"sqlite:///{DATA_DIR / 'game.db'}")
+
+
+def _is_demo_mode() -> bool:
+    return os.getenv("DEMO_MODE", "true").lower() in {"1", "true", "yes", "on"}
+
+
+def _sqlite_path_from_url(db_url: str) -> Path | None:
+    if not db_url.startswith("sqlite:///"):
+        return None
+    return Path(db_url.removeprefix("sqlite:///"))
 
 
 def _ensure_db(db_url: str) -> None:
     DATA_DIR.mkdir(exist_ok=True)
+
+    if _is_demo_mode():
+        db_path = _sqlite_path_from_url(db_url)
+        if db_path is not None and db_path.exists():
+            try:
+                db_path.unlink()
+                logger.info("Modo demo activo: DB reiniciada en arranque (%s)", db_path.name)
+            except PermissionError:
+                logger.warning(
+                    "Modo demo: no se pudo reiniciar %s (en uso). Se reutiliza la DB actual.",
+                    db_path.name,
+                )
+
     repo = F1Repository(db_url)
     with repo.session() as session:
         team_count = session.execute(text("SELECT COUNT(*) FROM teams")).scalar()
@@ -220,7 +252,9 @@ def main() -> None:
     )
 
     api.set_window(window)
-    api.set_race_launcher(RaceLauncher(api._repo, window).launch)
+    api.set_race_launcher(
+        RaceLauncher(api._repo, window, on_results_ready=api.set_last_race_results).launch
+    )
 
     start_kwargs: dict[str, Any] = {
         "debug": os.getenv("DEBUG", "false").lower() == "true",

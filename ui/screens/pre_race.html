@@ -1,0 +1,348 @@
+<!-- F1 Manager - Pre Race -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Manager - Pre Race</title>
+  <script src="../assets/js/alpine.min.js" defer></script>
+  <style>
+    :root {
+      --bg-primary:#0a0a0f;
+      --bg-panel:#111118;
+      --bg-card:#1a1a24;
+      --accent-red:#e8001e;
+      --accent-amber:#f5a623;
+      --accent-green:#00d45e;
+      --accent-blue:#0099ff;
+      --text-primary:#f0f0f5;
+      --text-muted:#6b6b80;
+      --border:#2a2a38;
+    }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Barlow', sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      padding: 14px;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    .meta {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .conditions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .cell {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 8px;
+    }
+    .cell .k { color: var(--text-muted); font-size: 11px; }
+    .cell .v { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; margin-top: 3px; }
+    .drivers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .driver-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      padding: 12px;
+    }
+    .driver-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 20px;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    input, select {
+      width: 100%;
+      margin-top: 3px;
+      padding: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+    .btn-primary {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+    .btn-green {
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+    .countdown {
+      margin-top: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-amber);
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .error {
+      margin-top: 10px;
+      color: var(--accent-red);
+      font-size: 13px;
+    }
+    @media (max-width: 1000px) {
+      .container { grid-template-columns: 1fr; }
+      .drivers { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div x-data="preRace()" x-init="init()">
+    <h1>PRE-RACE SETUP</h1>
+    <div class="meta" x-text="`Ronda ${data.race?.round ?? '-'} - ${data.race?.name ?? '-'}`"></div>
+    <div class="meta" x-text="`Circuito: ${data.circuit?.name ?? '-'}`"></div>
+
+    <div class="container" x-show="!loading">
+      <section class="panel">
+        <h3>Condiciones actuales</h3>
+        <div class="meta" x-text="`Medicion actual: ${data.current_conditions?.measured_at ?? '--:--:--'}`"></div>
+        <div class="conditions-grid">
+          <div class="cell"><div class="k">Condicion</div><div class="v" x-text="data.current_conditions?.condition ?? '-' "></div></div>
+          <div class="cell"><div class="k">Estado pista</div><div class="v" x-text="data.current_conditions?.track_state ?? '-' "></div></div>
+          <div class="cell"><div class="k">Lluvia</div><div class="v" x-text="`${Math.round((data.current_conditions?.rain_intensity ?? 0) * 100)}%`"></div></div>
+          <div class="cell"><div class="k">Grip</div><div class="v" x-text="data.current_conditions?.grip ?? '-' "></div></div>
+          <div class="cell"><div class="k">Temp aire</div><div class="v" x-text="`${data.current_conditions?.temp_air_c ?? '-'} C`"></div></div>
+          <div class="cell"><div class="k">Temp pista</div><div class="v" x-text="`${data.current_conditions?.temp_track_c ?? '-'} C`"></div></div>
+          <div class="cell"><div class="k">Humedad</div><div class="v" x-text="`${data.current_conditions?.humidity_pct ?? '-'}%`"></div></div>
+          <div class="cell"><div class="k">Viento</div><div class="v" x-text="`${data.current_conditions?.wind_kph ?? '-'} km/h`"></div></div>
+        </div>
+        <div class="btn-row">
+          <button @click="copyStrategy(0,1)">Copiar Coche 1 -> 2</button>
+          <button @click="copyStrategy(1,0)">Copiar Coche 2 -> 1</button>
+        </div>
+      </section>
+
+      <section class="drivers">
+        <template x-for="(driver, idx) in data.drivers" :key="driver.id">
+          <article class="driver-card">
+            <div class="driver-title" x-text="`${driver.number} ${driver.name}`"></div>
+
+            <label>Neumatico salida
+              <select x-model="driver.strategy.start_tyre">
+                <template x-for="t in data.options?.tyres ?? []" :key="t">
+                  <option :value="t" x-text="t"></option>
+                </template>
+              </select>
+            </label>
+
+            <label>Parada 1 (stint)
+              <select x-model="driver.strategy.pit_plan[0]">
+                <template x-for="t in data.options?.tyres ?? []" :key="t + '-pit'">
+                  <option :value="t" x-text="t"></option>
+                </template>
+              </select>
+            </label>
+
+            <label>Combustible inicial (kg)
+              <input type="number" min="1" max="120" step="1" x-model.number="driver.strategy.fuel_kg">
+            </label>
+
+            <label>Modo motor
+              <select x-model="driver.strategy.engine_mode">
+                <template x-for="m in data.options?.engine_modes ?? []" :key="m">
+                  <option :value="m" x-text="m"></option>
+                </template>
+              </select>
+            </label>
+
+            <label>Actitud salida
+              <select x-model="driver.strategy.launch_attitude">
+                <template x-for="a in data.options?.launch_attitudes ?? []" :key="a">
+                  <option :value="a" x-text="a"></option>
+                </template>
+              </select>
+            </label>
+          </article>
+        </template>
+      </section>
+    </div>
+
+    <div class="btn-row" x-show="!loading">
+      <button @click="goBack()">Volver</button>
+      <button class="btn-primary" @click="confirmAndCountdown()" :disabled="countdownActive || launching">Confirmar e iniciar carrera</button>
+      <button class="btn-green" @click="saveOnly()" :disabled="countdownActive || launching">Guardar estrategia</button>
+    </div>
+
+    <div class="countdown" x-show="countdownActive" x-text="`Inicio en ${countdown}s`"></div>
+    <div class="meta" x-show="launching">Iniciando carrera...</div>
+    <div class="error" x-text="error"></div>
+  </div>
+
+  <script>
+    function preRace() {
+      return {
+        loading: true,
+        launching: false,
+        countdownActive: false,
+        countdown: 10,
+        error: '',
+        raceId: null,
+        data: {
+          drivers: [],
+          options: { tyres: [], engine_modes: [], launch_attitudes: [] },
+        },
+
+        async init() {
+          const params = new URLSearchParams(window.location.search);
+          this.raceId = Number(params.get('race_id') || 0);
+          if (!this.raceId) {
+            this.error = 'race_id no valido';
+            this.loading = false;
+            return;
+          }
+          const payload = await window.pywebview.api.get_pre_race_state(this.raceId);
+          if (payload.error) {
+            this.error = payload.error;
+          } else {
+            this.data = payload;
+          }
+          this.loading = false;
+        },
+
+        copyStrategy(fromIdx, toIdx) {
+          const from = this.data.drivers[fromIdx];
+          const to = this.data.drivers[toIdx];
+          if (!from || !to) return;
+          to.strategy = JSON.parse(JSON.stringify(from.strategy));
+        },
+
+        buildStrategyPayload() {
+          const drivers = {};
+          (this.data.drivers || []).forEach(d => {
+            drivers[String(d.id)] = {
+              start_tyre: d.strategy.start_tyre,
+              pit_plan: d.strategy.pit_plan,
+              fuel_kg: Number(d.strategy.fuel_kg || 0),
+              engine_mode: d.strategy.engine_mode,
+              launch_attitude: d.strategy.launch_attitude,
+            };
+          });
+          return {
+            race_id: this.raceId,
+            measured_at: this.data.current_conditions?.measured_at,
+            current_conditions: this.data.current_conditions,
+            drivers,
+          };
+        },
+
+        async saveOnly() {
+          this.error = '';
+          const res = await window.pywebview.api.set_strategy(this.raceId, this.buildStrategyPayload());
+          if (res && res.error) this.error = res.error;
+        },
+
+        async confirmAndCountdown() {
+          this.error = '';
+          const saveRes = await window.pywebview.api.set_strategy(this.raceId, this.buildStrategyPayload());
+          if (saveRes && saveRes.error) {
+            this.error = saveRes.error;
+            return;
+          }
+
+          this.countdown = 10;
+          this.countdownActive = true;
+          const timer = setInterval(async () => {
+            this.countdown -= 1;
+            if (this.countdown <= 0) {
+              clearInterval(timer);
+              this.countdownActive = false;
+              this.launching = true;
+              const res = await window.pywebview.api.start_race(this.raceId);
+              this.launching = false;
+              if (res && res.error) {
+                this.error = res.error;
+              }
+            }
+          }, 1000);
+        },
+
+        goBack() {
+          window.location.href = 'dashboard.html';
+        },
+      };
+    }
+
+    if (!window.pywebview) {
+      window.pywebview = {
+        api: {
+          get_pre_race_state: async (raceId) => ({
+            race: { id: raceId, name: 'Grand Prix Demo', round: 9, total_laps: 70 },
+            circuit: { name: 'Circuit Gilles Villeneuve', lap_distance_km: 4.361 },
+            current_conditions: {
+              measured_at: '14:00:01',
+              condition: 'dry',
+              track_state: 'dry',
+              rain_intensity: 0,
+              temp_air_c: 24,
+              temp_track_c: 30,
+              humidity_pct: 49,
+              wind_kph: 13,
+              grip: 0.97,
+            },
+            options: {
+              tyres: ['soft', 'medium', 'hard', 'inter', 'wet'],
+              engine_modes: ['eco', 'standard', 'push'],
+              launch_attitudes: ['conservative', 'balanced', 'aggressive'],
+            },
+            drivers: [
+              { id: 1, number: 44, name: 'K. Hartmann', strategy: { start_tyre: 'medium', pit_plan: ['hard'], fuel_kg: 100, engine_mode: 'standard', launch_attitude: 'balanced' } },
+              { id: 2, number: 7, name: 'R. Vasquez', strategy: { start_tyre: 'medium', pit_plan: ['hard'], fuel_kg: 100, engine_mode: 'standard', launch_attitude: 'balanced' } },
+            ],
+          }),
+          set_strategy: async () => ({ ok: true }),
+          start_race: async () => ({ ok: true }),
+        },
+      };
+    }
+  </script>
+</body>
+</html>

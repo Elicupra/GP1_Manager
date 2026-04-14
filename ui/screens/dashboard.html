@@ -376,13 +376,22 @@ function dashboard() {
     },
 
     async navigate(screen) {
-      await window.pywebview.api.navigate(screen);
+      try {
+        const res = await window.pywebview.api.navigate(screen);
+        if (res && res.url) {
+          window.location.href = res.url;
+          return;
+        }
+      } catch (e) {
+        console.error('navigate error', e);
+      }
+      window.location.href = `${screen}.html`;
     },
 
     async startRace() {
       const raceId = this.data.next_race?.id;
       if (!raceId) return;
-      await window.pywebview.api.start_race(raceId);
+      window.location.href = `pre_race.html?race_id=${raceId}`;
     }
   }
 }

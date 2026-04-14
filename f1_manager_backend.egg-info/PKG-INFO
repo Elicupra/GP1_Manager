@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: f1-manager-backend
+Version: 0.1.0
+Requires-Python: >=3.12
+Requires-Dist: pywebview>=5.0
+Requires-Dist: arcade>=2.6
+Requires-Dist: sqlalchemy>=2.0
+Requires-Dist: alembic>=1.13
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: numpy>=1.26
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=5; extra == "dev"
+Requires-Dist: black>=24; extra == "dev"
+Requires-Dist: ruff>=0.4; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"

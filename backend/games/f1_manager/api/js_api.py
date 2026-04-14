@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +36,8 @@ class F1ManagerAPI:
         self._race_launcher = race_launcher
         self._current_screen = "dashboard"
         self._saved_strategies: dict[int, dict[str, Any]] = {}
+        self._demo_started_races: set[int] = set()
+        self._last_race_results: dict[str, Any] | None = None
 
     def set_window(self, window: "webview.Window") -> None:
         self._window = window
@@ -41,8 +45,16 @@ class F1ManagerAPI:
     def set_race_launcher(self, race_launcher: Callable[[int], None]) -> None:
         self._race_launcher = race_launcher
 
+    def set_last_race_results(self, payload: dict[str, Any]) -> None:
+        self._last_race_results = payload
+
+    def get_last_race_results(self) -> dict:
+        if self._last_race_results is None:
+            return {"error": "No hay resultados de carrera disponibles"}
+        return self._last_race_results
+
     def navigate(self, screen: str) -> dict:
-        allowed = {"dashboard", "garage", "market", "finances", "strategy", "main_menu"}
+        allowed = {"dashboard", "garage", "market", "finances", "strategy", "pre_race", "main_menu"}
         if screen not in allowed:
             return {"error": f"Pantalla desconocida: {screen}"}
         try:
@@ -50,9 +62,9 @@ class F1ManagerAPI:
             if not screen_path.exists():
                 return {"error": f"Pantalla no encontrada: {screen}"}
             self._current_screen = screen
-            if self._window is not None:
-                self._window.load_url(screen_path.as_uri())
-            return {"ok": True, "screen": screen}
+            # Importante: no cambiar de URL desde aqui para no invalidar callbacks
+            # JS de pywebview durante la respuesta de esta llamada.
+            return {"ok": True, "screen": screen, "url": screen_path.as_uri()}
         except Exception as exc:
             logger.exception("navigate error")
             return {"error": str(exc)}
@@ -394,6 +406,96 @@ class F1ManagerAPI:
             logger.exception("get_strategy error")
             return {"error": str(exc)}
 
+    def get_pre_race_state(self, race_id: int) -> dict:
+        try:
+            team = self._repo.get_player_team()
+            race = self._repo.get_race(race_id)
+            if team is None or race is None:
+                return {"error": "Carrera no encontrada"}
+
+            with self._repo.session() as session:
+                circuit = session.get(Circuit, race.circuit_id)
+
+            if circuit is None:
+                return {"error": "Circuito no encontrado"}
+
+            now = datetime.now()
+            marker = (now.minute * 31 + race.id * 7) % 100
+            rain_chance = int(float(circuit.rain_chance_pct))
+            if marker < int(rain_chance * 0.6):
+                condition = "wet"
+                rain_intensity = round(min(1.0, 0.55 + rain_chance / 200), 2)
+                track_state = "wet"
+            elif marker < rain_chance:
+                condition = "intermediate"
+                rain_intensity = round(min(1.0, 0.25 + rain_chance / 300), 2)
+                track_state = "damp"
+            else:
+                condition = "dry"
+                rain_intensity = 0.0
+                track_state = "dry"
+
+            temp_air = int(float(circuit.avg_temp_c))
+            temp_track = temp_air + (6 if condition == "dry" else 2)
+            humidity = 50 + int(rain_intensity * 35)
+            wind_kph = 8 + (race.round_number % 11)
+            grip = round(1.0 - rain_intensity * 0.4, 2)
+
+            saved = self._saved_strategies.get(race_id, {})
+            saved_drivers = saved.get("drivers", {}) if isinstance(saved, dict) else {}
+
+            drivers_payload: list[dict[str, Any]] = []
+            for driver in self._repo.get_drivers_by_team(team.id):
+                dkey = str(driver.id)
+                dcfg = saved_drivers.get(dkey, {}) if isinstance(saved_drivers, dict) else {}
+                drivers_payload.append(
+                    {
+                        "id": driver.id,
+                        "name": driver.name,
+                        "number": driver.number,
+                        "strategy": {
+                            "start_tyre": dcfg.get("start_tyre", "medium"),
+                            "pit_plan": dcfg.get("pit_plan", ["hard"]),
+                            "fuel_kg": dcfg.get("fuel_kg", 100),
+                            "engine_mode": dcfg.get("engine_mode", "standard"),
+                            "launch_attitude": dcfg.get("launch_attitude", "balanced"),
+                        },
+                    }
+                )
+
+            return {
+                "race": {
+                    "id": race.id,
+                    "name": race.name,
+                    "round": race.round_number,
+                    "total_laps": circuit.total_laps,
+                },
+                "circuit": {
+                    "name": circuit.name,
+                    "lap_distance_km": float(circuit.lap_distance_km),
+                },
+                "current_conditions": {
+                    "measured_at": now.strftime("%H:%M:%S"),
+                    "condition": condition,
+                    "track_state": track_state,
+                    "rain_intensity": rain_intensity,
+                    "temp_air_c": temp_air,
+                    "temp_track_c": temp_track,
+                    "humidity_pct": humidity,
+                    "wind_kph": wind_kph,
+                    "grip": grip,
+                },
+                "drivers": drivers_payload,
+                "options": {
+                    "tyres": ["soft", "medium", "hard", "inter", "wet"],
+                    "engine_modes": ["eco", "standard", "push"],
+                    "launch_attitudes": ["conservative", "balanced", "aggressive"],
+                },
+            }
+        except Exception as exc:
+            logger.exception("get_pre_race_state error")
+            return {"error": str(exc)}
+
     def set_strategy(self, race_id: int, strategy: dict) -> dict:
         try:
             self._saved_strategies[race_id] = strategy
@@ -406,8 +508,39 @@ class F1ManagerAPI:
         try:
             if self._race_launcher is None:
                 return {"error": "Race launcher no configurado"}
-            self._race_launcher(race_id)
-            return {"ok": True, "race_id": race_id}
+
+            logger.info("start_race solicitado para race_id=%s", race_id)
+
+            demo_mode = os.getenv("DEMO_MODE", "true").lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }
+            if demo_mode:
+                race = self._repo.get_race(race_id)
+                if race is None:
+                    return {"error": f"Carrera no encontrada: {race_id}"}
+                max_demo_races = int(os.getenv("DEMO_MAX_RACES", "2"))
+                if race_id not in self._demo_started_races and len(self._demo_started_races) >= max_demo_races:
+                    return {
+                        "error": (
+                            "Modo demo: limite de carreras alcanzado "
+                            f"({max_demo_races}) en esta sesion. Cierra y abre el juego para reiniciar."
+                        )
+                    }
+                self._demo_started_races.add(race_id)
+
+            # Ejecutar la carrera en un hilo separado evita romper el callback
+            # JS de pywebview al cambiar de pantalla durante la llamada API.
+            threading.Thread(
+                target=self._race_launcher,
+                args=(race_id,),
+                daemon=True,
+                name=f"race-launcher-{race_id}",
+            ).start()
+            logger.info("start_race aceptado y encolado para race_id=%s", race_id)
+            return {"ok": True, "race_id": race_id, "started": True}
         except Exception as exc:
             logger.exception("start_race error")
             return {"error": str(exc)}

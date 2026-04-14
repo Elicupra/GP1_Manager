@@ -23,6 +23,18 @@
 - [x] Agregar controles de velocidad de reproducción (÷4, ÷2, Normal, ×2, ×4, Pausa).
 - [x] Usar imagen del circuito (canada.png) como fondo de carrera.
 - [x] Establecer tiempo de vuelta realista: 1:17.300 (77.3 segundos).
+- [ ] Flujo pre-race obligatorio antes de iniciar carrera (sin forecast).
+  - Pantalla dedicada de estrategia previa por coche.
+  - Mostrar solo condiciones actuales de pista y meteorologia en el momento.
+  - Confirmacion de estrategia y countdown de 10 segundos.
+  - Inicio automatico de carrera tras countdown.
+- [ ] Estrategia por coche antes de salida.
+  - Neumatico de salida y secuencia de paradas.
+  - Combustible inicial.
+  - Modo motor y actitud de salida.
+- [ ] Robustecer inicio de carrera y pasar pruebas.
+  - Mantener `start_race` estable en PyWebView.
+  - Validar con pytest que no hay regresiones de simulador.
 
 ## Prioridad media (backend)
 
@@ -65,3 +77,13 @@
   - Asegurar guardado atomico de resultados finales antes del retorno a UI de gestion.
   - Mostrar resumen post-carrera (clasificacion, puntos, vuelta rapida, incidentes, estrategia) y confirmar guardado.
   - Añadir test de integracion para validar ciclo completo: iniciar GP -> finalizar -> volver a gestion sin cerrar app.
+
+- [ ] Vistas de modo carrera durante simulacion.
+  - Vista Mix (mapa + estrategia).
+  - Vista Mapa.
+  - Vista Estrategia.
+  - Controles de tiempo compartidos entre vistas.
+
+- [ ] Ordenes en carrera por piloto con seleccion multiple.
+  - Seleccion individual por coche.
+  - Seleccion multiple para aplicar la misma orden a ambos.

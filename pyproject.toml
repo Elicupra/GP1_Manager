@@ -15,6 +15,11 @@ dependencies = [
     "numpy>=1.26",          # simulación numérica
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
+exclude = ["tests*", "ui*", "data*", "alembic*", "graphics*", "arcade_view*"]
+
 [project.scripts]
 f1-manager = "main:main"
 db-inspector = "tools.db_inspector:main"
