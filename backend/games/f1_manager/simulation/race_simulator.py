@@ -260,6 +260,7 @@ class RaceSimulator:
                 team_id=team.id,
                 car=team.car,
                 tyre=TyreState(compound=starting_compound),
+                grid_position=pos,
                 position=pos,
                 fuel_kg=110.0,
                 engine_mode=EngineMode.STANDARD,
@@ -516,6 +517,7 @@ class RaceSimulator:
             results.append({
                 "driver_id"      : state.driver_id,
                 "team_id"        : state.team_id,
+                "grid_position"  : state.grid_position,
                 "finish_position": state.position,
                 "points"         : points,
                 "dnf"            : state.dnf,

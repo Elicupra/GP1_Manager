@@ -1,0 +1,31 @@
+{
+  "name": "Circuit Gilles Villeneuve",
+  "country": "Canada",
+  "image": "data/track/canada.png",
+  "image_size": {
+    "width": 1364,
+    "height": 768
+  },
+  "points": {
+    "start_finish": {
+      "x": 1080,
+      "y": 296
+    },
+    "pit_entry": {
+      "x": 794,
+      "y": 272
+    },
+    "s1_control": {
+      "x": 1084,
+      "y": 471
+    },
+    "s2_control": {
+      "x": 756,
+      "y": 581
+    }
+  },
+  "metadata": {
+    "exported_at": "2026-04-14T11:06:13.882Z",
+    "tool_version": "1.0"
+  }
+}

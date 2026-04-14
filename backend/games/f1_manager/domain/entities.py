@@ -166,6 +166,7 @@ class CarRaceState:
     team_id     : int
     car         : Car
     tyre        : TyreState
+    grid_position: int = 0   # Posición de parrilla inicial
     position    : int   = 0
     fuel_kg     : float = 110.0
     ers_charge  : float = 1.0    # 0-1

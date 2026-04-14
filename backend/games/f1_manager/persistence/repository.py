@@ -211,7 +211,8 @@ class F1Repository:
             race.is_completed = True
 
             for index, r in enumerate(results, start=1):
-                grid_position = int(r.get("grid_position") or r.get("finish_position") or index)
+                # grid_position comes from race simulator's initial order
+                grid_position = int(r.get("grid_position") or index)
                 dr = DriverResult(
                     race_id         = race_id,
                     driver_id       = r["driver_id"],

@@ -51,6 +51,7 @@ class EngineMode(str, enum.Enum):
     ECO      = "eco"
     STANDARD = "standard"
     PUSH     = "push"
+    OVERTAKE   = "overtake"
 
 
 class ContractStatus(str, enum.Enum):
@@ -76,6 +77,8 @@ class ComponentType(str, enum.Enum):
     SUSPENSION= "suspension"
     ERS       = "ers"
     GEARBOX   = "gearbox"
+    BRAKES    = "brakes"
+    TRANSMISSION = "transmission"
 
 
 # ── Season ───────────────────────────────────────────────────────────────────

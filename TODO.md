@@ -10,18 +10,19 @@
   - `ui/*`
   - `arcade_view/*`
   - `alembic/*`
-- [ ] Completar pantallas de gestion faltantes en `ui/screens/`:
-  - `dashboard.html`
-  - `garage.html`
-  - `market.html`
-  - `finances.html`
-  - `strategy.html`
-- [ ] Integrar ventana Arcade real con sprites y render continuo.
-- [ ] Conectar `start_race` para flujo gestion -> carrera -> gestion.
-- [ ] Corregir crash al iniciar GP por hilo Arcade/Pyglet.
-  - Error observado: `RuntimeError: EventLoop.run() must be called from the same thread that imports pyglet.app`
-- [ ] Corregir guardado de `driver_results` cuando falta `grid_position`.
-  - Error observado: `sqlite3.IntegrityError: NOT NULL constraint failed: driver_results.grid_position`
+- [x] Completar pantallas de gestion:
+  - `dashboard.html` ✅
+  - `garage.html` ✅
+  - `market.html` ✅
+  - `finances.html` ✅
+  - `strategy.html` ✅
+- [x] Integrar visualización de carrera en HTML (reemplazando Arcade).
+- [x] Conectar `start_race` para flujo gestion -> carrera -> gestion.
+- [x] Corregir crash al iniciar GP (Arcade threading → HTML Canvas).
+- [x] Corregir guardado de `driver_results` (grid_position NOT NULL).
+- [x] Agregar controles de velocidad de reproducción (÷4, ÷2, Normal, ×2, ×4, Pausa).
+- [x] Usar imagen del circuito (canada.png) como fondo de carrera.
+- [x] Establecer tiempo de vuelta realista: 1:17.300 (77.3 segundos).
 
 ## Prioridad media (backend)
 

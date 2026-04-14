@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Calibrator — GP1 Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0f;
+            color: #f0f0f5;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .canvas-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .controls-section {
+            width: 350px;
+            background: #111118;
+            border: 1px solid #2a2a38;
+            border-radius: 4px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 14px;
+            color: #6b6b80;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            border: 2px solid #2a2a38;
+            background: #000;
+            cursor: crosshair;
+            border-radius: 4px;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            color: #f0f0f5;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: #2a2a38;
+            border-color: #3a3a48;
+        }
+
+        button.active {
+            background: #00d45e;
+            border-color: #00d45e;
+            color: #000;
+        }
+
+        button.danger {
+            background: #e8001e;
+            border-color: #e8001e;
+            color: #fff;
+        }
+
+        button.danger:hover {
+            background: #cc001a;
+        }
+
+        .point-info {
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            padding: 10px 12px;
+            border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            min-height: 60px;
+        }
+
+        .point-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #111118;
+            border-radius: 2px;
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+
+        .point-name {
+            color: #6b6b80;
+            font-weight: 600;
+        }
+
+        .point-coords {
+            color: #00d45e;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .point-delete {
+            background: #e8001e;
+            border: none;
+            color: #fff;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 2px;
+            margin-left: 5px;
+        }
+
+        .point-delete:hover {
+            background: #cc001a;
+        }
+
+        .legend {
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            padding: 10px 12px;
+            border-radius: 2px;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        .dot-start {
+            background: #00d45e;
+            border-color: #00d45e;
+        }
+
+        .dot-pit-entry {
+            background: #0099ff;
+            border-color: #0099ff;
+        }
+
+        .dot-pit-exit {
+            background: #f5a623;
+            border-color: #f5a623;
+        }
+
+        .dot-s1 {
+            background: #a020f0;
+            border-color: #a020f0;
+        }
+
+        .dot-s2 {
+            background: #00d45e;
+            border-color: #00d45e;
+        }
+
+        .status {
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            padding: 10px 12px;
+            border-radius: 2px;
+            font-size: 12px;
+            color: #f0f0f5;
+        }
+
+        .status.ready {
+            background: rgba(0, 212, 94, 0.1);
+            border-color: #00d45e;
+            color: #00d45e;
+        }
+
+        .export-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            padding: 10px 15px;
+            background: #1a1a24;
+            border: 1px dashed #2a2a38;
+            color: #f0f0f5;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .file-label:hover {
+            background: #2a2a38;
+            border-color: #3a3a48;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            color: #00d45e;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 2px;
+            resize: none;
+        }
+
+        .info-box {
+            background: rgba(0, 153, 255, 0.1);
+            border: 1px solid #0099ff;
+            border-radius: 2px;
+            padding: 10px 12px;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #0099ff;
+        }
+
+        .coords-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            color: #00d45e;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 6px 8px;
+            border-radius: 2px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #00d45e;
+        }
+
+        .manual-points-section {
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            padding: 10px 12px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        .manual-point-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #2a2a38;
+        }
+
+        .manual-point-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .manual-label {
+            color: #6b6b80;
+            font-weight: 600;
+            font-size: 10px;
+        }
+
+        @media (max-width: 1400px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .controls-section {
+                width: 100%;
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- CANVAS SECTION -->
+    <div class="canvas-section">
+        <h1>🏁 Circuit Calibrator — Canada</h1>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- CONTROLS SECTION -->
+    <div class="controls-section">
+        <div>
+            <h2>Puntos a Marcar</h2>
+            <div class="button-group">
+                <button id="btn-start" class="point-btn" data-point="start_finish">
+                    🏁 START/FINISH
+                </button>
+                <button id="btn-pit-entry" class="point-btn" data-point="pit_entry">
+                    🔵 PIT ENTRY
+                </button>
+                <button id="btn-pit-exit" class="point-btn" data-point="pit_exit">
+                    🟠 PIT EXIT
+                </button>
+                <button id="btn-s1" class="point-btn" data-point="s1_control">
+                    🟣 SECTOR 1 LINE
+                </button>
+                <button id="btn-s2" class="point-btn" data-point="s2_control">
+                    🟢 SECTOR 2/3 LINE
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <h2>Puntos Marcados</h2>
+            <div id="points-list" class="point-info">
+                <div style="color: #6b6b80; font-size: 11px;">Haz click en los botones y luego en la imagen para marcar puntos</div>
+            </div>
+        </div>
+
+        <div>
+            <h2>Editar Coordenadas Manualmente</h2>
+            <div id="manual-points" class="manual-points-section">
+                <div style="color: #6b6b80; font-size: 11px;">Marca puntos primero para editar sus coordenadas</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot dot-start"></div>
+                    <span>Start/Finish (verde)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-pit-entry"></div>
+                    <span>Pit Entry (azul)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-pit-exit"></div>
+                    <span>Pit Exit (naranja)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-s1"></div>
+                    <span>Sector 1 Line (púrpura)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-s2"></div>
+                    <span>Sector 2/3 Line (verde)</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status">
+            Selecciona un punto para marcar
+        </div>
+
+        <div>
+            <h2>Acciones</h2>
+            <div class="button-group">
+                <button id="btn-clear" class="danger">LIMPIAR TODO</button>
+                <button id="btn-export">DESCARGAR JSON</button>
+                <label for="file-import" class="file-label">CARGAR JSON</label>
+                <input type="file" id="file-import" accept=".json">
+            </div>
+        </div>
+
+        <div>
+            <h2>Salida JSON</h2>
+            <textarea id="json-output" readonly></textarea>
+        </div>
+
+        <div class="info-box">
+            💡 Haz click en el botón de un punto, luego haz click en la imagen para marcar su ubicación.
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const pointBtns = document.querySelectorAll('.point-btn');
+    const pointsList = document.getElementById('points-list');
+    const jsonOutput = document.getElementById('json-output');
+    const status = document.getElementById('status');
+
+    let currentSelectedPoint = null;
+    let points = {};
+    let image = null;
+
+    // Colores para cada punto
+    const colors = {
+        start_finish: '#00d45e',
+        pit_entry: '#0099ff',
+        pit_exit: '#f5a623',
+        s1_control: '#a020f0',
+        s2_control: '#00d45e'
+    };
+
+    const labels = {
+        start_finish: 'START/FINISH',
+        pit_entry: 'PIT ENTRY',
+        pit_exit: 'PIT EXIT',
+        s1_control: 'SECTOR 1 LINE',
+        s2_control: 'SECTOR 2/3 LINE'
+    };
+
+    // Cargar imagen
+    function loadImage() {
+        const img = new Image();
+        img.onload = () => {
+            image = img;
+            canvas.width = img.width;
+            canvas.height = img.height;
+            redraw();
+        };
+        img.onerror = () => {
+            alert('Error cargando la imagen. Asegúrate de que ../data/track/canada.png existe.');
+        };
+        img.src = '../data/track/canada.png';
+    }
+
+    function redraw() {
+        if (!image) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0);
+
+        // Dibujar puntos
+        Object.entries(points).forEach(([key, point]) => {
+            drawPoint(point.x, point.y, colors[key], 8);
+        });
+    }
+
+    function drawPoint(x, y, color, radius = 8) {
+        // Círculo exterior (sombra)
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Círculo principal
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Borde
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Cruz en el centro
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - radius / 2, y);
+        ctx.lineTo(x + radius / 2, y);
+        ctx.moveTo(x, y - radius / 2);
+        ctx.lineTo(x, y + radius / 2);
+        ctx.stroke();
+    }
+
+    // Eventos de botones
+    pointBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            pointBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSelectedPoint = btn.dataset.point;
+            status.textContent = `Haz click en la imagen para marcar ${labels[currentSelectedPoint]}`;
+            status.classList.add('ready');
+        });
+    });
+
+    // Click en canvas
+    canvas.addEventListener('click', (e) => {
+        if (!currentSelectedPoint) {
+            alert('Selecciona un punto primero');
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+
+        points[currentSelectedPoint] = { x, y };
+        updatePointsList();
+        updateJsonOutput();
+        redraw();
+
+        // Actualizar campos de entrada manual
+        updateManualFields();
+
+        status.textContent = `✓ ${labels[currentSelectedPoint]} marcado en (${x}, ${y})`;
+    });
+
+    // Actualizar lista de puntos
+    function updatePointsList() {
+        if (Object.keys(points).length === 0) {
+            pointsList.innerHTML = '<div style="color: #6b6b80; font-size: 11px;">Ningún punto marcado aún</div>';
+            return;
+        }
+
+        pointsList.innerHTML = Object.entries(points)
+            .map(([key, point]) => `
+                <div class="point-item">
+                    <span class="point-name">${labels[key]}</span>
+                    <span class="point-coords">(${point.x}, ${point.y})</span>
+                    <button class="point-delete" onclick="deletePoint('${key}')">✕</button>
+                </div>
+            `)
+            .join('');
+    }
+
+    // Actualizar campos de entrada manual
+    function updateManualFields() {
+        const manualSection = document.getElementById('manual-points');
+
+        if (Object.keys(points).length === 0) {
+            manualSection.innerHTML = '<div style="color: #6b6b80; font-size: 11px;">Marca puntos primero para editar sus coordenadas</div>';
+            return;
+        }
+
+        manualSection.innerHTML = Object.entries(points)
+            .map(([key, point]) => `
+                <div class="manual-point-row">
+                    <div class="manual-label">${labels[key]}</div>
+                    <div class="coords-input-group">
+                        <div style="flex: 1;">
+                            <input type="number" id="x-${key}" value="${point.x}" 
+                                   onchange="updatePointFromInput('${key}', 'x', this.value)" placeholder="X">
+                        </div>
+                        <div style="flex: 1;">
+                            <input type="number" id="y-${key}" value="${point.y}" 
+                                   onchange="updatePointFromInput('${key}', 'y', this.value)" placeholder="Y">
+                        </div>
+                    </div>
+                </div>
+            `)
+            .join('');
+    }
+
+    // Actualizar punto desde entrada manual
+    window.updatePointFromInput = function(pointKey, coord, value) {
+        const numValue = Math.round(Number(value)) || 0;
+
+        if (!points[pointKey]) {
+            points[pointKey] = { x: 0, y: 0 };
+        }
+
+        if (coord === 'x') {
+            points[pointKey].x = numValue;
+            document.getElementById(`x-${pointKey}`).value = numValue;
+        } else {
+            points[pointKey].y = numValue;
+            document.getElementById(`y-${pointKey}`).value = numValue;
+        }
+
+        updateJsonOutput();
+        redraw();
+    };
+
+    // Eliminar punto
+    window.deletePoint = function(key) {
+        delete points[key];
+        updatePointsList();
+        updateManualFields();
+        updateJsonOutput();
+        redraw();
+    };
+
+    // Actualizar JSON
+    function updateJsonOutput() {
+        const circuitData = {
+            name: "Circuit Gilles Villeneuve",
+            country: "Canada",
+            image: "data/track/canada.png",
+            image_size: {
+                width: image ? image.width : 1280,
+                height: image ? image.height : 720
+            },
+            points: points,
+            metadata: {
+                exported_at: new Date().toISOString(),
+                tool_version: "1.0"
+            }
+        };
+
+        jsonOutput.value = JSON.stringify(circuitData, null, 2);
+    }
+
+    // Descargar JSON
+    document.getElementById('btn-export').addEventListener('click', () => {
+        if (Object.keys(points).length === 0) {
+            alert('Marca al menos un punto antes de descargar');
+            return;
+        }
+
+        const data = jsonOutput.value;
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'canada_circuit.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Cargar JSON
+    document.getElementById('file-import').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                points = data.points || {};
+                updatePointsList();
+                updateManualFields();
+                updateJsonOutput();
+                redraw();
+                status.textContent = '✓ JSON cargado correctamente';
+            } catch (err) {
+                alert('Error parseando JSON: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Limpiar todo
+    document.getElementById('btn-clear').addEventListener('click', () => {
+        if (confirm('¿Eliminar todos los puntos?')) {
+            points = {};
+            currentSelectedPoint = null;
+            pointBtns.forEach(b => b.classList.remove('active'));
+            updatePointsList();
+            updateManualFields();
+            updateJsonOutput();
+            redraw();
+            status.textContent = 'Todos los puntos eliminados';
+        }
+    });
+
+    // Inicializar
+    loadImage();
+    updateJsonOutput();
+
+    // Detectar cuando se cierra la ventana con cambios sin guardar
+    window.addEventListener('beforeunload', (e) => {
+        if (Object.keys(points).length > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        }
+    });
+</script>
+
+</body>
+</html>

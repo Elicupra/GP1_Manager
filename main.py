@@ -1,6 +1,7 @@
 """Punto de entrada único del juego F1 Manager."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import queue
@@ -82,6 +83,7 @@ class RaceLauncher:
         simulator = RaceSimulator(config, teams, drivers)
         finished = threading.Event()
         results: list[dict[str, Any]] = []
+        snapshots: list[dict[str, Any]] = []  # Snapshots para visualización HTML
 
         def run_simulation() -> None:
             try:
@@ -91,6 +93,36 @@ class RaceLauncher:
                         data_queue.put(snapshot, timeout=0.5)
                     except queue.Full:
                         pass
+                    # Guardar snapshot para visualización posterior
+                    snapshot_dict = {
+                        "lap": snapshot.lap,
+                        "total_laps": snapshot.total_laps,
+                        "weather": {
+                            "condition": snapshot.weather.condition.value if snapshot.weather else "dry",
+                            "intensity": snapshot.weather.intensity if snapshot.weather else 0.0,
+                        },
+                        "cars": [
+                            {
+                                "driver_id": car.driver_id,
+                                "team_id": car.team_id,
+                                "position": car.position,
+                                "gap_to_leader_s": car.gap_to_leader_s,
+                                "fuel_kg": car.fuel_kg,
+                                "dnf": car.dnf,
+                                "tyre": car.tyre.compound.value if car.tyre else "medium",
+                            }
+                            for car in snapshot.cars
+                        ],
+                        "events": [
+                            {
+                                "lap": evt.lap,
+                                "event_type": evt.event_type,
+                                "detail": evt.detail,
+                            }
+                            for evt in snapshot.events
+                        ],
+                    }
+                    snapshots.append(snapshot_dict)
                     time.sleep(max(tick_delay, 0.01))
                 results.extend(simulator.get_results())
             finally:
@@ -99,32 +131,35 @@ class RaceLauncher:
         try:
             self._window.hide()
         except Exception:
-            logger.exception("No se pudo ocultar PyWebView antes de arrancar Arcade")
+            logger.exception("No se pudo ocultar PyWebView antes de arrancar carrera")
 
         sim_thread = threading.Thread(target=run_simulation, daemon=True)
         sim_thread.start()
 
+        # Esperar a que termine la simulación
+        finished.wait(timeout=120)
+        
+        if results:
+            self._repo.save_race_results(race_id, results)
+            logger.info("Resultados de carrera guardados: %d drivers", len(results))
+        
         try:
-            from arcade_view.race_window import run_race_window
-
-            run_race_window(
-                data_queue=data_queue,
-                race_name=race.name,
-                total_laps=domain_circuit.total_laps,
-                track_key=_circuit_to_track_key(circuit_row.name),
-                player_team_id=player_team.id if player_team else 1,
+            self._window.show()
+            # Mostrar pantalla de resultados con los datos recolectados
+            results_data = {
+                "race_id": race_id,
+                "race_name": race.name,
+                "circuit_name": circuit_row.name,
+                "total_laps": domain_circuit.total_laps,
+                "results": results,
+                "snapshots": snapshots[:100],  # Limitar snapshots para memoria
+            }
+            self._window.evaluate_js(
+                f"window.raceResults = {json.dumps(results_data, default=str)}"
             )
+            self._window.load_url((SCREENS_DIR / "hud_carrera.html").as_uri())
         except Exception:
-            logger.exception("Fallo lanzando la ventana Arcade")
-        finally:
-            finished.wait(timeout=30)
-            if results:
-                self._repo.save_race_results(race_id, results)
-            try:
-                self._window.show()
-                self._window.load_url((SCREENS_DIR / "dashboard.html").as_uri())
-            except Exception:
-                logger.exception("No se pudo restaurar PyWebView tras la carrera")
+            logger.exception("No se pudo restaurar PyWebView tras la carrera")
 
 
 def _circuit_to_track_key(circuit_name: str) -> str:
